@@ -1,0 +1,15 @@
+city:
+  name: "北京"
+  center:
+    lat: 39.9042
+    lng: 116.4074
+  bounding_box:
+    min_lat: 39.80
+    min_lng: 116.20
+    max_lat: 40.00
+    max_lng: 116.60
+  osm_source: "osmnx"
+  osm_file: ""
+  station_placement: "grid"
+  station_spacing_m: 300
+  station_capacity: 30
