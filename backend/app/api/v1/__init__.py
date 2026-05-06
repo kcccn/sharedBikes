@@ -1,1 +1,1 @@
-"""API v1 router package."""
+"""API v1 package."""
