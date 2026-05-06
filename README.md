@@ -51,14 +51,14 @@
 每个 Phase 都有对应的 Issue 追踪进度，欢迎参与讨论！
 
 ### Phase 1: 基础设施 — 真实地图解析与静态车辆投放
-| 任务 | 状态 | 说明 |
-|------|------|------|
-| [#21 RFC: 方案设计](https://github.com/kcccn/sharedBikes/issues/21) | 🆕 讨论中 | 选型 osmnx vs osmium，确定技术路线 |
-| [#23 OSM 路网解析](https://github.com/kcccn/sharedBikes/issues/23) | 📋 待开始 | OSM 数据 → City.Node/Edge 转换 |
-| [#25 站点自动放置](https://github.com/kcccn/sharedBikes/issues/25) | 📋 待开始 | 在路网上自动生成 Station |
-| [#34 城市配置系统](https://github.com/kcccn/sharedBikes/issues/34) | 📋 待开始 | YAML 配置 + 多城市支持 |
-| [#27 MapService 集成](https://github.com/kcccn/sharedBikes/issues/27) | 📋 待开始 | 解析器+布站+缓存的完整管线 |
-| [#36 集成测试 & 演示](https://github.com/kcccn/sharedBikes/issues/36) | 📋 待开始 | E2E 验证与演示脚本 |
+| 任务 | 状态 | PR | 说明 |
+|------|------|----|------|
+| [#21 RFC: 方案设计](https://github.com/kcccn/sharedBikes/issues/21) | 🆕 讨论中 | — | 选型 osmnx vs osmium，确定技术路线 |
+| [#23 OSM 路网解析](https://github.com/kcccn/sharedBikes/issues/23) | 📋 待开始 | — | OSM 数据 → City.Node/Edge 转换，依赖 #21 |
+| [#25 站点自动放置](https://github.com/kcccn/sharedBikes/issues/25) | 🔄 审查中 | [#39](https://github.com/kcccn/sharedBikes/pull/39) | 基于路网节点度的贪心站点生成算法 |
+| [#34 城市配置系统](https://github.com/kcccn/sharedBikes/issues/34) | 🔄 审查中 | [#40](https://github.com/kcccn/sharedBikes/pull/40) | TOML 配置 + CityLoader + 多城市支持 |
+| [#27 MapService 集成](https://github.com/kcccn/sharedBikes/issues/27) | 📋 待开始 | — | 解析器+布站+缓存的完整管线，依赖 #23+#25 |
+| [#36 集成测试 & 演示](https://github.com/kcccn/sharedBikes/issues/36) | 📋 待开始 | — | E2E 验证与演示脚本，依赖上面全部 |
 
 ### Phase 2: 动态城市
 *引入基于时间的 NPC 需求生成机制（通勤潮汐模拟）—— 待 Phase 1 完成后分解*
