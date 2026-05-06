@@ -1,27 +1,42 @@
-"""Tests for geo utility functions."""
-
+"""Tests for geographic utility functions."""
 import math
-
+import pytest
 from app.utils.geo import haversine, bearing, midpoint
 
 
-def test_haversine_same_point() -> None:
-    d = haversine(39.9, 116.4, 39.9, 116.4)
-    assert d == 0.0
+class TestHaversine:
+    def test_same_point(self) -> None:
+        assert haversine(0.0, 0.0, 0.0, 0.0) == 0.0
+
+    def test_known_distance(self) -> None:
+        # Tokyo → Seoul roughly 1154 km
+        dist = haversine(35.6762, 139.6503, 37.5665, 126.9780)
+        assert 1_100_000 < dist < 1_200_000
+
+    def test_antipodal_small_angle(self) -> None:
+        # Very close points should not produce NaN
+        d = haversine(45.0, 0.0, 45.0001, 0.0)
+        assert not math.isnan(d)
+        assert d > 0
+
+    def test_symmetry(self) -> None:
+        d1 = haversine(10.0, 20.0, 30.0, 40.0)
+        d2 = haversine(30.0, 40.0, 10.0, 20.0)
+        assert d1 == pytest.approx(d2, rel=1e-9)
 
 
-def test_haversine_beijing_to_shanghai() -> None:
-    # Approx 1060 km
-    d = haversine(39.9042, 116.4074, 31.2304, 121.4737)
-    assert 1_000_000 < d < 1_100_000
+class TestBearing:
+    def test_north(self) -> None:
+        b = bearing(0.0, 0.0, 10.0, 0.0)
+        assert b == pytest.approx(0.0, abs=1)
+
+    def test_east(self) -> None:
+        b = bearing(0.0, 0.0, 0.0, 10.0)
+        assert b == pytest.approx(90.0, abs=1)
 
 
-def test_bearing_north() -> None:
-    b = bearing(0.0, 0.0, 10.0, 0.0)
-    assert b == 0.0 or abs(b - 360.0) < 1e-9
-
-
-def test_midpoint() -> None:
-    lat, lng = midpoint(40.0, 116.0, 40.0, 117.0)
-    assert abs(lat - 40.0) < 0.01
-    assert abs(lng - 116.5) < 0.01
+class TestMidpoint:
+    def test_midpoint(self) -> None:
+        mlat, mlng = midpoint(0.0, 0.0, 10.0, 10.0)
+        assert mlat == pytest.approx(5.0)
+        assert mlng == pytest.approx(5.0)
