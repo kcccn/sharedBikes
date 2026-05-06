@@ -1,40 +1,53 @@
-"""Geospatial utility functions."""
+"""Geographic utility functions."""
+
+from __future__ import annotations
 
 import math
 
+# Earth radius in metres (WGS-84)
+_EARTH_RADIUS_M = 6_371_000.0
 
-def haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle distance in metres between two WGS-84 points."""
-    R = 6_371_000.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lng2 - lng1)
-    a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+
+def haversine(p1: tuple[float, float], p2: tuple[float, float]) -> float:
+    """Great-circle distance in metres between two (lat, lng) points."""
+    lat1, lng1 = math.radians(p1[0]), math.radians(p1[1])
+    lat2, lng2 = math.radians(p2[0]), math.radians(p2[1])
+
+    dlat = lat2 - lat1
+    dlng = lng2 - lng1
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    # Clamp to avoid floating-point rounding beyond [0, 1]
+    a = max(0.0, min(1.0, a))
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+
+    return _EARTH_RADIUS_M * c
+
+
+def bearing(p1: tuple[float, float], p2: tuple[float, float]) -> float:
+    """Initial bearing in degrees from *p1* toward *p2*."""
+    lat1, lng1 = math.radians(p1[0]), math.radians(p1[1])
+    lat2, lng2 = math.radians(p2[0]), math.radians(p2[1])
+
+    d_lng = lng2 - lng1
+    y = math.sin(d_lng) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(d_lng)
+
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def midpoint(p1: tuple[float, float], p2: tuple[float, float]) -> tuple[float, float]:
+    """Midpoint (lat, lng) between two points."""
+    lat1, lng1 = math.radians(p1[0]), math.radians(p1[1])
+    lat2, lng2 = math.radians(p2[0]), math.radians(p2[1])
+
+    bx = math.cos(lat2) * math.cos(lng2 - lng1)
+    by = math.cos(lat2) * math.sin(lng2 - lng1)
+
+    lat3 = math.atan2(
+        math.sin(lat1) + math.sin(lat2),
+        math.sqrt((math.cos(lat1) + bx) ** 2 + by ** 2),
     )
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+    lng3 = lng1 + math.atan2(by, math.cos(lat1) + bx)
 
-
-def bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Initial bearing (degrees) from point 1 to point 2."""
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dl = math.radians(lng2 - lng1)
-    x = math.sin(dl) * math.cos(phi2)
-    y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dl)
-    return (math.degrees(math.atan2(x, y)) + 360) % 360
-
-
-def midpoint(lat1: float, lng1: float, lat2: float, lng2: float) -> tuple[float, float]:
-    """Midpoint (lat, lng) between two coordinates."""
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dl = math.radians(lng2 - lng1)
-    bx = math.cos(phi2) * math.cos(dl)
-    by = math.cos(phi2) * math.sin(dl)
-    lat = math.atan2(
-        math.sin(phi1) + math.sin(phi2),
-        math.sqrt((math.cos(phi1) + bx) ** 2 + by ** 2),
-    )
-    lng = math.radians(lng1) + math.atan2(by, math.cos(phi1) + bx)
-    return math.degrees(lat), math.degrees(lng)
+    return (math.degrees(lat3), math.degrees(lng3))
