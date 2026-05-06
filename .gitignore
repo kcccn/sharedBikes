@@ -1,15 +1,16 @@
-# Byte-compiled
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Virtual environment
-.venv/
-venv/
-env/
+*.so
 *.egg-info/
 dist/
 build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
 
 # IDE
 .vscode/
@@ -26,6 +27,5 @@ Thumbs.db
 .env.local
 
 # Project specific
+*.log
 data/
-*.osm
-*.pbf
