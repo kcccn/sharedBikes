@@ -23,6 +23,7 @@ class AppConfig(BaseSettings):
     """Top-level application configuration loaded from environment / .env."""
 
     sim: SimulationConfig = SimulationConfig()
+    city: str = "beijing"
 
     host: str = "0.0.0.0"
     port: int = 8000
