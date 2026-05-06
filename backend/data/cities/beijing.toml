@@ -1,0 +1,24 @@
+[city]
+display_name = "Beijing"
+country = "China"
+timezone = "Asia/Shanghai"
+default_station_capacity = 30
+initial_bikes_per_station = 10
+ticks_per_day = 1440
+total_bikes = 5000
+peak_hour_multiplier = 3.0
+off_peak_multiplier = 0.3
+
+[osm]
+source = "mock"
+# TODO(phase-2): replace with real OSM source
+# source = "url"
+# url = "https://download.geofabrik.de/asia/china-latest.osm.pbf"
+# bounding_box = [39.75, 116.15, 40.05, 116.60]
+
+[station_generation]
+enabled = true
+min_distance_km = 0.3
+min_capacity = 10
+max_capacity = 50
+max_stations = 200
