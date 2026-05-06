@@ -1,100 +1,86 @@
-"""Rebalancing strategies for fleet redistribution."""
+"""Scheduler — rebalancing strategies to redistribute bikes across stations."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
-from app.core.city import City, Station
-from app.core.fleet import FleetSnapshot
+from typing import NamedTuple
 
 
-@dataclass
-class DispatchOrder:
-    """A single rebalance instruction: move N bikes between stations."""
+class DispatchOrder(NamedTuple):
+    """A single rebalancing instruction: move n bikes between stations."""
 
     from_station_id: str
     to_station_id: str
-    bike_count: int
+    count: int
 
 
-@dataclass
-class FleetBalanceReport:
-    """Outcome of a rebalance analysis."""
+class FleetBalanceReport(NamedTuple):
+    """Summary of fleet balance and suggested rebalancing orders."""
 
-    starving_stations: list[Station] = field(default_factory=list)
-    overflowing_stations: list[Station] = field(default_factory=list)
-    suggested_orders: list[DispatchOrder] = field(default_factory=list)
+    starving_stations: list[tuple[str, int]]  # station_id, deficit
+    overflowing_stations: list[tuple[str, int]]  # station_id, surplus
+    suggested_orders: list[DispatchOrder]
 
 
 class RebalanceStrategy(ABC):
-    """Pluggable strategy for detecting and correcting fleet imbalance."""
+    """Pluggable strategy for computing rebalancing orders."""
 
     @abstractmethod
     def analyse(
         self,
-        city: City,
-        snapshot: FleetSnapshot,
-        tick: int,
+        inventory: dict[str, int],
+        capacities: dict[str, int],
     ) -> FleetBalanceReport:
-        """Analyse the current fleet state and return balance recommendations."""
+        ...
 
 
+@dataclass
 class GreedyThresholdStrategy(RebalanceStrategy):
-    """A simple greedy strategy: pair starving ↔ overflowing stations.
+    """Simple greedy strategy: pair starving ↔ overflowing stations if the
+    imbalance exceeds configurable thresholds."""
 
-    A station is *starving* when its fill ratio is below *low_threshold*.
-    A station is *overflowing* when its fill ratio is above *high_threshold*.
-    """
-
-    def __init__(
-        self,
-        low_threshold: float = 0.2,
-        high_threshold: float = 0.8,
-        max_bikes_per_order: int = 5,
-    ) -> None:
-        self.low_threshold = low_threshold
-        self.high_threshold = high_threshold
-        self.max_bikes_per_order = max_bikes_per_order
+    low_threshold: float = 0.2  # fraction of capacity → starving
+    high_threshold: float = 0.8  # fraction of capacity → overflowing
 
     def analyse(
         self,
-        city: City,
-        snapshot: FleetSnapshot,
-        tick: int,
+        inventory: dict[str, int],
+        capacities: dict[str, int],
     ) -> FleetBalanceReport:
-        _ = tick  # not used in this strategy
-        starving: list[Station] = []
-        overflowing: list[Station] = []
+        starving: list[tuple[str, int]] = []
+        overflowing: list[tuple[str, int]] = []
 
-        for station in city.stations.values():
-            if station.capacity <= 0:
-                continue  # skip zero-capacity stations
-            inventory = snapshot.station_inventory.get(station.id, 0)
-            ratio = inventory / station.capacity
-            if ratio < self.low_threshold:
-                starving.append(station)
-            elif ratio > self.high_threshold:
-                overflowing.append(station)
+        for sid in inventory:
+            cap = capacities.get(sid, 30)
+            if cap <= 0:
+                continue  # skip zero-capacity or removed stations
+            occupancy = inventory[sid] / cap
+            deficit = max(0, int(cap * self.low_threshold) - inventory[sid])
+            surplus = max(0, inventory[sid] - int(cap * self.high_threshold))
+            if deficit > 0:
+                starving.append((sid, deficit))
+            if surplus > 0:
+                overflowing.append((sid, surplus))
 
+        # Simple greedy pairing
         orders: list[DispatchOrder] = []
-        for src in overflowing:
-            for dst in starving:
-                # Pair overflowing → starving with a cap
-                transfer = min(
-                    self.max_bikes_per_order,
-                    snapshot.station_inventory.get(src.id, 0),
-                    dst.capacity - snapshot.station_inventory.get(dst.id, 0),
-                )
-                if transfer > 0:
-                    orders.append(DispatchOrder(
-                        from_station_id=src.id,
-                        to_station_id=dst.id,
-                        bike_count=transfer,
-                    ))
+        i, j = 0, 0
+        while i < len(starving) and j < len(overflowing):
+            sid_starve, need = starving[i]
+            sid_over, have = overflowing[j]
+            move = min(need, have)
+            if move > 0:
+                orders.append(DispatchOrder(sid_over, sid_starve, move))
+            starving[i] = (sid_starve, need - move)
+            overflowing[j] = (sid_over, have - move)
+            if starving[i][1] <= 0:
+                i += 1
+            if overflowing[j][1] <= 0:
+                j += 1
 
         return FleetBalanceReport(
-            starving_stations=starving,
-            overflowing_stations=overflowing,
+            starving_stations=starving[i:],
+            overflowing_stations=overflowing[j:],
             suggested_orders=orders,
         )
