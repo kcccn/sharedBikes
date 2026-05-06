@@ -1,8 +1,8 @@
-"""Rebalancing scheduler — strategy pattern for dispatch logic."""
+"""Rebalancing scheduler — strategy pattern for fleet balancing."""
 
 from __future__ import annotations
 
-import abc
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 
@@ -10,35 +10,35 @@ from dataclasses import dataclass, field
 class DispatchOrder:
     """A single rebalancing instruction."""
 
-    order_id: str
-    from_station: str
-    to_station: str
+    from_station_id: str
+    to_station_id: str
     bike_count: int
+    truck_id: str | None = None
 
 
 @dataclass
 class FleetBalanceReport:
-    """Report produced by a rebalancing strategy."""
+    """Snapshot of the fleet balance analysis."""
 
     starving_stations: list[str] = field(default_factory=list)
     overflowing_stations: list[str] = field(default_factory=list)
     suggested_orders: list[DispatchOrder] = field(default_factory=list)
 
 
-class RebalanceStrategy(abc.ABC):
-    """Strategy interface for rebalancing algorithms."""
+class RebalanceStrategy(ABC):
+    """Pluggable strategy for analysing fleet balance."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def analyse(
         self,
-        inventory: dict[str, int],
+        station_inventory: dict[str, list[str]],
         station_capacity: dict[str, int],
     ) -> FleetBalanceReport:
-        ...
+        """Analyse inventory and capacity, return a balance report."""
 
 
 class GreedyThresholdStrategy(RebalanceStrategy):
-    """Simple threshold-based strategy: stations below 20% or above 80%."""
+    """Simple threshold-based strategy — stations below *low* or above *high*."""
 
     def __init__(self, low_ratio: float = 0.2, high_ratio: float = 0.8) -> None:
         self.low_ratio = low_ratio
@@ -46,16 +46,16 @@ class GreedyThresholdStrategy(RebalanceStrategy):
 
     def analyse(
         self,
-        inventory: dict[str, int],
+        station_inventory: dict[str, list[str]],
         station_capacity: dict[str, int],
     ) -> FleetBalanceReport:
         starving: list[str] = []
         overflowing: list[str] = []
         for sid, cap in station_capacity.items():
             if cap <= 0:
-                continue
-            current = inventory.get(sid, 0)
-            ratio = current / cap
+                continue  # skip stations with no capacity
+            count = len(station_inventory.get(sid, []))
+            ratio = count / cap
             if ratio < self.low_ratio:
                 starving.append(sid)
             elif ratio > self.high_ratio:
