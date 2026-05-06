@@ -1,20 +1,19 @@
-"""Simulation engine — orchestrates tick-by-tick execution."""
+"""Simulation engine — main loop driving ticks, state machine, and time."""
 
 from __future__ import annotations
 
-import enum
 from dataclasses import dataclass, field
+from enum import Enum, auto
 
-from app.core.city import City
 from app.core.fleet import Fleet, FleetSnapshot
-from app.core.scheduler import RebalanceStrategy
-from app.core.weather import Environment, WeatherGenerator
+from app.core.scheduler import GreedyThresholdStrategy, RebalanceStrategy
+from app.core.weather import Environment
 
 
-class SimState(enum.Enum):
-    STOPPED = "stopped"
-    RUNNING = "running"
-    PAUSED = "paused"
+class SimState(Enum):
+    STOPPED = auto()
+    RUNNING = auto()
+    PAUSED = auto()
 
 
 class SimulationNotRunningError(RuntimeError):
@@ -22,113 +21,89 @@ class SimulationNotRunningError(RuntimeError):
 
 
 @dataclass
-class SimConfig:
-    """Internal simulation parameters."""
+class SimulationEngine:
+    """Core simulation loop. Manages tick progression, fleet, weather, and
+    periodic rebalancing."""
 
+    fleet: Fleet = field(default_factory=Fleet)
+    environment: Environment = field(default_factory=Environment)
+    rebalancer: RebalanceStrategy = field(
+        default_factory=GreedyThresholdStrategy
+    )
+
+    state: SimState = SimState.STOPPED
+    tick: int = 0
     ticks_per_day: int = 1440
     speed_multiplier: int = 60
     rebalance_interval_ticks: int = 60
 
-
-class SimulationEngine:
-    """Core simulation loop — advances time and updates fleet state.
-
-    Usage::
-
-        engine = SimulationEngine(city, fleet, strategy)
-        engine.start()
-        snapshot = engine.advance(1440)   # simulate one day
-        engine.pause()
-        engine.stop()
-    """
-
-    def __init__(
-        self,
-        city: City,
-        fleet: Fleet,
-        rebalance_strategy: RebalanceStrategy,
-        config: SimConfig | None = None,
-    ) -> None:
-        self.city = city
-        self.fleet = fleet
-        self.strategy = rebalance_strategy
-        self.config = config or SimConfig()
-        self._weather_gen = WeatherGenerator(seed=42)
-
-        self.state: SimState = SimState.STOPPED
-        self.tick: int = 0
-        self._last_rebalance_tick: int = 0
-
-    # ── lifecycle ──────────────────────────────────────────────────
+    # ── lifecycle ────────────────────────────────────────────────────
 
     def start(self) -> None:
-        """Start or resume the simulation."""
         if self.state == SimState.RUNNING:
-            raise SimulationNotRunningError("Simulation is already running")
+            return  # idempotent
         self.state = SimState.RUNNING
 
     def pause(self) -> None:
-        """Pause the simulation."""
         if self.state != SimState.RUNNING:
-            raise SimulationNotRunningError("Simulation is not running")
+            return  # only meaningful from RUNNING
         self.state = SimState.PAUSED
 
     def stop(self) -> None:
-        """Stop the simulation and reset tick count."""
         self.state = SimState.STOPPED
-        self.tick = 0
 
-    # ── time travel ────────────────────────────────────────────────
+    # ── main loop ────────────────────────────────────────────────────
 
     def advance(self, steps: int = 1) -> FleetSnapshot:
-        """Advance the simulation by *steps* ticks.
-
-        Returns the fleet snapshot *after* the last tick.
-
-        Raises
-        ------
-        SimulationNotRunningError
-            If the engine is not in RUNNING state.
-        """
+        """Advance the simulation by *steps* ticks. Returns the final
+        fleet snapshot. Raises SimulationNotRunningError if not RUNNING."""
         if self.state != SimState.RUNNING:
             raise SimulationNotRunningError(
-                f"Cannot advance when engine state is {self.state.value}"
+                f"Cannot advance: engine is {self.state.name}"
             )
-
         for _ in range(steps):
             self._tick()
         return self.fleet.snapshot()
 
-    # ── internal ticks ─────────────────────────────────────────────
-
     def _tick(self) -> None:
-        """Execute a single simulation tick."""
+        """Execute one simulation tick."""
         self.tick += 1
-        env = self._weather_gen.generate(self.tick)
 
-        # === stub: real trip generation will go here (Phase 2) ===
-        _ = env
+        # Periodic rebalancing
+        if self.tick % self.rebalance_interval_ticks == 0:
+            self._run_rebalance()
 
-        # periodic rebalance analysis
-        if (
-            self.config.rebalance_interval_ticks > 0
-            and (self.tick - self._last_rebalance_tick)
-            >= self.config.rebalance_interval_ticks
-        ):
-            snap = self.fleet.snapshot()
-            report = self.strategy.analyse(self.city, snap, self.tick)
-            self._last_rebalance_tick = self.tick
-            # stub: orders are logged but not yet dispatched
-            _ = report
+    def _run_rebalance(self) -> None:
+        """Evaluate fleet balance and execute rebalancing orders."""
+        report = self.rebalancer.analyse(
+            inventory=self.fleet.station_inventory,
+            capacities=self.fleet._station_capacity,
+        )
+        for order in report.suggested_orders:
+            for _ in range(order.count):
+                try:
+                    self.fleet.undock_bike(
+                        _pick_bike_at_station(self.fleet, order.from_station_id)
+                    )
+                except (ValueError, KeyError):
+                    break  # no more bikes at that station
 
-    # ── helpers ────────────────────────────────────────────────────
+    # ── time helpers ─────────────────────────────────────────────────
 
     def time_of_day(self) -> str:
-        """Return the simulated time-of-day string, e.g. ``"07:30"``."""
-        total_minutes = self.tick % self.config.ticks_per_day
+        """Return the simulated time-of-day string (HH:MM) for the current
+        tick, respecting ticks_per_day."""
+        total_minutes = self.tick % self.ticks_per_day
         h, m = divmod(total_minutes, 60)
         return f"{h:02d}:{m:02d}"
 
-    def current_environment(self) -> Environment:
-        """Return the weather/environment for the current tick."""
-        return self._weather_gen.generate(self.tick)
+    def day_number(self) -> int:
+        return self.tick // self.ticks_per_day + 1
+
+
+def _pick_bike_at_station(fleet: Fleet, station_id: str) -> str:
+    """Return the bike_id of any docked bike at the given station."""
+    for bid, bike in fleet.bikes.items():
+        if bike.current_station_id == station_id and bike.state.name == "DOCKED":
+            return bid
+    raise ValueError(f"No docked bikes at station {station_id}")
