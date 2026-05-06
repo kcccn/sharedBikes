@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="handcrafted">
+  <bounds minlat="39.9" minlon="116.3" maxlat="39.94" maxlon="116.36"/>
+
+  <!-- Node exists -->
+  <node id="1001" lat="39.90" lon="116.30" version="1"/>
+
+  <!-- Way references node 9999 which does not exist -->
+  <way id="2001" version="1">
+    <nd ref="1001"/>
+    <nd ref="9999"/>
+    <tag k="highway" v="residential"/>
+  </way>
+
+</osm>
