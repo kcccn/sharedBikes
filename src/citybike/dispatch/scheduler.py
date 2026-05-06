@@ -16,7 +16,7 @@ class RebalanceScheduler:
     """检测失衡并生成调度任务的核心引擎。"""
 
     def __init__(self, imbalance_threshold: int = 10) -> None:
-        self.threshold = threshold
+        self.imbalance_threshold = imbalance_threshold
         self._tasks: dict[str, DispatchTask] = {}
 
     def detect_hotspots(
