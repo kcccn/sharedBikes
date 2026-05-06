@@ -1,56 +1,78 @@
-# CityBike-Sim 架构文档
+# CityBike-Sim Architecture
 
-## 分层架构
-
-```
-┌─────────────────────────────────────┐
-│          API Layer (FastAPI)        │
-│  /api/v1/*  ←  HTTP →  Dashboard   │
-├─────────────────────────────────────┤
-│         Service Layer               │
-│  MapService | DemandService |       │
-│  BalanceService                     │
-├─────────────────────────────────────┤
-│          Core Domain                │
-│  City · Fleet · Weather · Scheduler │
-│  Engine · Config                    │
-├─────────────────────────────────────┤
-│        Utils / Visualization        │
-│  geo.py · heatmap.py               │
-└─────────────────────────────────────┘
-```
-
-## 依赖方向
-
-- **API → Services → Core ← Utils**
-- Core 层零 I/O 依赖，可独立测试
-- Services 层编排 Core 逻辑，提供 I/O 边界
-- Utils 层纯函数，被 Core 和 Services 引用
-
-## 核心数据流
+## Layered Architecture
 
 ```
-   tick()
-     │
-     ▼
-  WeatherGenerator ──► Environment
-     │
-     ▼
-  DemandService ──► list[TripRequest]
-     │                   │
-     ▼                   ▼
-  Fleet (mutate)    BalanceService
-     │                   │
-     ▼                   ▼
-  FleetSnapshot ────► API Response
+┌─────────────────────────────────────────────────────┐
+│                     API Layer                        │
+│   FastAPI router (app/api/v1/router.py)             │
+│   Pydantic DTOs (app/models/schemas.py)             │
+├─────────────────────────────────────────────────────┤
+│                   Service Layer                      │
+│   MapService  DemandService  BalanceService         │
+│   (app/services/)                                   │
+├─────────────────────────────────────────────────────┤
+│                    Core Layer                        │
+│   City  Fleet  Engine  Weather  Scheduler           │
+│   (app/core/)  — pure domain logic, no I/O          │
+├─────────────────────────────────────────────────────┤
+│                Utilities / Shared                    │
+│   geo.py  config.py  visualization/                 │
+└─────────────────────────────────────────────────────┘
 ```
 
-## Phase 拆解建议
+### Dependency Direction
 
-| Phase | 范围 |
-|-------|------|
-| Phase 0 | ✅ **当前** — 项目骨架、领域模型、API 桩、测试框架 |
-| Phase 1 | 真实 OSM 数据接入、静态车辆投放、基础 API 实现 |
-| Phase 2 | NPC 通勤潮汐需求生成、动态天气影响 |
-| Phase 3 | 调度员派遣、财务结算、多策略对比 |
-| Phase 4 | Deck.gl 可视化、热力图、OD 轨迹流 |
+**API → Services → Core ← Utils**
+
+The core layer has zero I/O dependencies (no database, no network, no file
+system). All side-effects are orchestrated by the service layer.
+
+## Core Domain Models
+
+| Model | Responsibility |
+|-------|----------------|
+| `City` | Immutable road graph (nodes, edges, stations, zones) |
+| `Fleet` | Mutable bike lifecycle (dock, undock, snapshot) |
+| `SimulationEngine` | Tick loop, state machine (STOPPED/RUNNING/PAUSED) |
+| `Environment` | Weather conditions + special events |
+| `RebalanceStrategy` | Pluggable strategy (GreedyThreshold → GA / RL) |
+
+## Data Flow
+
+```
+User Input
+    │
+    ▼
+API Endpoint ──► Service ──► Core Model ──► FleetSnapshot
+                                       │
+                                       ▼
+                                    API Response (DTO)
+```
+
+## Simulation Tick
+
+Each tick (1 simulated minute by default):
+
+1. Environment drifts (weather, event decay)
+2. Demand generates trip requests
+3. Trips execute (bikes undock → ride → dock)
+4. Rebalance check (every N ticks)
+5. Snapshot captured
+
+## Phase Plan
+
+| Phase | Scope |
+|-------|-------|
+| **Phase 0** | Project skeleton, architecture, CI (✅ done) |
+| **Phase 1** | Real map loading (OSM), static bike deployment, basic tests |
+| **Phase 2** | Commuter tide demand generation, trip execution |
+| **Phase 3** | Rebalancing dispatch, fleet financial model |
+| **Phase 4** | Deck.gl visualization, heatmap, OD flow animation |
+
+## Key Design Decisions
+
+1. **Immutable City** — Road network built once; never mutated at runtime
+2. **Snapshot pattern** — `FleetSnapshot` for API, mutable `Fleet` for engine
+3. **Strategy pattern** — `RebalanceStrategy` interface for pluggable algorithms
+4. **No ORM** — In-memory simulation; persistence is out of scope for v1
