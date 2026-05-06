@@ -16,6 +16,10 @@ class SimState(Enum):
     PAUSED = "paused"
 
 
+class SimulationNotRunningError(RuntimeError):
+    """Raised when an operation requires the simulation to be RUNNING."""
+
+
 @dataclass
 class SimulationEngine:
     """
@@ -31,13 +35,18 @@ class SimulationEngine:
 
     tick: int = 0
     state: SimState = SimState.STOPPED
+    ticks_per_day: int = 1440  # Aligned with SimulationConfig.ticks_per_day
 
     # ── Lifecycle ─────────────────────────────────────────
 
     def start(self) -> None:
+        if self.state == SimState.RUNNING:
+            raise RuntimeError("Simulation is already running")
         self.state = SimState.RUNNING
 
     def pause(self) -> None:
+        if self.state != SimState.RUNNING:
+            raise RuntimeError("Can only pause a running simulation")
         self.state = SimState.PAUSED
 
     def stop(self) -> None:
@@ -50,10 +59,14 @@ class SimulationEngine:
         Advance simulation by *steps* ticks (or one tick if omitted).
 
         Returns a FleetSnapshot for external consumers (API, viz).
+
+        Raises ``SimulationNotRunningError`` if the engine is not RUNNING.
         """
+        if self.state != SimState.RUNNING:
+            raise SimulationNotRunningError(
+                f"Cannot advance — simulation is {self.state.value}"
+            )
         for _ in range(steps):
-            if self.state != SimState.RUNNING:
-                break
             self._tick()
         return self.fleet.snapshot()
 
@@ -78,9 +91,9 @@ class SimulationEngine:
 
     def time_of_day(self) -> str:
         """Return a human-readable clock string based on current tick."""
-        total_minutes = self.tick % 1440  # 1440 ticks = 1 day
+        total_minutes = self.tick % self.ticks_per_day
         h, m = divmod(total_minutes, 60)
         return f"{h:02d}:{m:02d}"
 
     def day_number(self) -> int:
-        return self.tick // 1440 + 1
+        return self.tick // self.ticks_per_day + 1
