@@ -2,52 +2,29 @@
 
 on:
   issues:
-    types:
-      - opened
-      - edited
+    types: [opened, edited]
   issue_comment:
-    types:
-      - created
+    types: [created]
   pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - closed
+    types: [opened, edited, synchronize, closed]
   pull_request_review_comment:
-    types:
-      - created
+    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
         description: 'Issue/PR number to trigger bots on'
         required: false
         type: string
+  schedule:
+    - cron: "*/30 * * * *"
 
 permissions:
   issues: write
   pull-requests: write
   actions: write
+  contents: write
 
 jobs:
-  run-ryobot:
-    strategy:
-      matrix:
-        bot: [architect, reviewer, pm, explorer]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install RyoBot
-        run: python -m pip install git+https://github.com/kcccn/ryobot.git
-
-      - name: Run
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          EVENT_PAYLOAD: ${{ toJson(github.event) }}
-          BOT_IDENTITY: ${{ matrix.bot }}
-        run: ryobot
+  ryobot:
+    uses: kcccn/ryobot/.github/workflows/ryobot.yml@main
+    secrets: inherit
