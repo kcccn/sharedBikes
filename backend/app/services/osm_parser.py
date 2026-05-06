@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import networkx as nx
 
@@ -62,12 +62,11 @@ def parse_from_place(
     OSMError
         If the place cannot be resolved or the graph is empty after filtering.
     """
-    try:
-        import osmnx as ox
-    except ImportError:  # pragma: no cover
-        raise OSMError("osmnx is required but not installed. Run: pip install osmnx")
+    _ensure_osmnx()
 
     try:
+        import osmnx as ox
+
         G = ox.graph_from_place(
             place_name,
             network_type="drive",
@@ -108,10 +107,7 @@ def parse_from_bbox(
     OSMError
         If the bbox is invalid or the graph is empty after filtering.
     """
-    try:
-        import osmnx as ox
-    except ImportError:  # pragma: no cover
-        raise OSMError("osmnx is required but not installed. Run: pip install osmnx")
+    _ensure_osmnx()
 
     if south >= north or west >= east:
         raise OSMError(
@@ -120,6 +116,8 @@ def parse_from_bbox(
         )
 
     try:
+        import osmnx as ox
+
         G = ox.graph_from_bbox(
             north=north,
             south=south,
@@ -158,17 +156,16 @@ def parse_from_file(filepath: str | Path, *, simplify: bool = True) -> City:
     OSMError
         If the file does not exist or the graph is empty.
     """
-    try:
-        import osmnx as ox
-    except ImportError:  # pragma: no cover
-        raise OSMError("osmnx is required but not installed. Run: pip install osmnx")
+    _ensure_osmnx()
 
     path = Path(filepath)
     if not path.exists():
         raise OSMError(f"OSM file not found: {path}")
 
     try:
-        G = ox.graph_from_xml(str(path), simplify=simplimize)
+        import osmnx as ox
+
+        G = ox.graph_from_xml(str(path), simplify=simplify)
     except Exception as exc:
         raise OSMError(f"Failed to parse OSM file {path}: {exc}") from exc
 
@@ -254,6 +251,16 @@ def _graph_to_city(G: nx.MultiDiGraph) -> City:
 # ── Helpers ─────────────────────────────────────────────────────────────
 
 
+def _ensure_osmnx() -> None:
+    """Check osmnx is importable; raise a helpful OSMError if not."""
+    try:
+        import osmnx  # noqa: F401
+    except ImportError:
+        raise OSMError(
+            "osmnx is required but not installed. Run: pip install osmnx"
+        )
+
+
 def _highway_allowed(highway_val: Any) -> bool:
     """Check whether an OSM ``highway`` tag value is in our allowed set.
 
@@ -279,7 +286,6 @@ def _parse_maxspeed(raw: Any) -> float:
         return 30.0
 
     if isinstance(raw, list):
-        # osmnx may return a list when multiple values are tagged.
         speeds = []
         for item in raw:
             speeds.append(_parse_single_maxspeed(item))
