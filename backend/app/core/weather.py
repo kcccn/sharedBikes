@@ -1,67 +1,78 @@
-"""Weather and environmental conditions affecting simulation."""
+"""Weather & environmental conditions model."""
 
 from __future__ import annotations
 
-import enum
-import random
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import NamedTuple
 
 
-class WeatherType(enum.Enum):
-    CLEAR = "clear"
-    CLOUDY = "cloudy"
-    RAIN = "rain"
-    STORM = "storm"
+class WeatherCondition(Enum):
+    CLEAR = auto()
+    CLOUDY = auto()
+    RAIN = auto()
+    STORM = auto()
+    SNOW = auto()
 
 
 @dataclass
 class SpecialEvent:
-    """A temporary event affecting demand in a zone."""
+    """A temporary event that affects demand in a region."""
 
-    event_id: str
+    id: str
     name: str
-    zone_id: str
-    start_tick: int
-    duration_ticks: int
+    centre_lat: float
+    centre_lng: float
+    radius_km: float
     demand_multiplier: float = 2.0
-    radius_km: float = 1.0
+    start_tick: int = 0
+    end_tick: int = 60
 
 
 @dataclass
 class Environment:
-    """Current environmental state for a single tick."""
+    """The current environmental state of the simulation."""
 
-    weather: WeatherType = WeatherType.CLEAR
+    condition: WeatherCondition = WeatherCondition.CLEAR
     temperature_c: float = 20.0
-    special_events: list[SpecialEvent] = ()
+    wind_speed_kmh: float = 0.0
+    precipitation_mm: float = 0.0
+    special_events: list[SpecialEvent] = field(default_factory=list)
 
     def demand_factor(self) -> float:
-        """Multiplier applied to baseline demand."""
-        f = 1.0
-        if self.weather == WeatherType.RAIN:
-            f *= 0.6
-        elif self.weather == WeatherType.STORM:
-            f *= 0.2
-        for _event in self.special_events:
-            f *= _event.demand_multiplier
-        return f
+        """Return a multiplier [0, 1] representing how weather suppresses demand."""
+        factor = 1.0
+        if self.condition == WeatherCondition.RAIN:
+            factor *= 0.5
+        elif self.condition == WeatherCondition.STORM:
+            factor *= 0.15
+        elif self.condition == WeatherCondition.SNOW:
+            factor *= 0.3
+        elif self.condition == WeatherCondition.CLOUDY:
+            factor *= 0.9
+        return max(factor, 0.0)
 
+    def event_factor_at(self, lat: float, lng: float) -> float:
+        """Return the compound demand multiplier for all active events at (lat, lng)."""
+        factor = 1.0
+        for event in self.special_events:
+            d = self._haversine(lat, lng, event.centre_lat, event.centre_lng)
+            if d <= event.radius_km:
+                factor *= event.demand_multiplier
+        return factor
 
-class WeatherGenerator:
-    """Incrementally generates weather conditions per tick."""
-
-    def __init__(self, seed: int = 42) -> None:
-        self._rng = random.Random(seed)
-
-    def generate(self, tick: int) -> Environment:
-        _ = tick  # tick-based deterministic weather may be added later
-        r = self._rng.random()
-        if r < 0.6:
-            weather = WeatherType.CLEAR
-        elif r < 0.85:
-            weather = WeatherType.CLOUDY
-        elif r < 0.95:
-            weather = WeatherType.RAIN
-        else:
-            weather = WeatherType.STORM
-        return Environment(weather=weather, temperature_c=20.0 + self._rng.gauss(0, 5))
+    @staticmethod
+    def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+        """Great-circle distance in km between two lat/lng points."""
+        R = 6371.0
+        dlat = math.radians(lat2 - lat1)
+        dlng = math.radians(lng2 - lng1)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlng / 2) ** 2
+        )
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
