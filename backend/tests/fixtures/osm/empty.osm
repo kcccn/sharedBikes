@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="handcrafted">
+  <bounds minlat="39.9" minlon="116.3" maxlat="39.94" maxlon="116.36"/>
+  <!-- Intentionally empty: no nodes, no ways -->
+</osm>
