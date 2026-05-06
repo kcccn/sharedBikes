@@ -3,22 +3,22 @@
 These tests cover the missing AC items not yet present in
 test_phase1_integration.py or test_map_service.py:
 
-  AC③  Strong connectivity — Kosaraju verification
-  AC④  Station position non-overlap — min-distance constraint
-  AC⑤  Boundary cases — empty city, single node, broken OSM refs
+  AC3  Strong connectivity -- Kosaraju verification
+  AC4  Station position non-overlap -- min-distance constraint
+  AC5  Boundary cases -- empty city, single node, broken OSM refs
 """
 
 from __future__ import annotations
 
+import itertools
 import math
 
-import pytest
-
-from app.core.city import City, LatLng, Node, Edge, Station, Zone
+from app.core.city import LatLng, Node, Edge, Station
 from app.core.station_generator import generate_stations
 
+
 # =========================================================================
-# AC③ — Strong Connectivity (Kosaraju's algorithm)
+# AC3 -- Strong Connectivity (Kosaraju's algorithm)
 # =========================================================================
 
 
@@ -86,7 +86,7 @@ def _kosaraju_scc_count(edges: dict[str, Edge]) -> int:
 
 
 def test_connectivity_3x3_grid_is_fully_connected() -> None:
-    """AC③: A 3×3 grid with bidirectional edges must be 1 SCC."""
+    """AC3: A 3x3 grid with bidirectional edges must be 1 SCC."""
     nodes, edges = _build_3x3_grid()
     scc_count = _kosaraju_scc_count(edges)
     assert scc_count == 1, (
@@ -95,7 +95,7 @@ def test_connectivity_3x3_grid_is_fully_connected() -> None:
 
 
 def test_connectivity_disconnected_graph() -> None:
-    """AC③: Two isolated subgraphs must yield 2 SCCs."""
+    """AC3: Two isolated subgraphs must yield 2 SCCs."""
     edges: dict[str, Edge] = {
         "e1": Edge(edge_id="e1", from_node="a", to_node="b", length_m=100),
         "e2": Edge(edge_id="e2", from_node="c", to_node="d", length_m=100),
@@ -104,15 +104,15 @@ def test_connectivity_disconnected_graph() -> None:
     assert scc_count == 2
 
 
-def test_connectivity_single_node() -> None:
-    """AC③: A graph with one node and no edges has 0 SCCs (no graph)."""
+def test_connectivity_empty_edges() -> None:
+    """AC3: An empty edge set has 0 SCCs (no graph)."""
     edges: dict[str, Edge] = {}
     scc_count = _kosaraju_scc_count(edges)
     assert scc_count == 0
 
 
 def test_connectivity_directed_ring() -> None:
-    """AC③: A directed cycle is strongly connected (1 SCC)."""
+    """AC3: A directed cycle is strongly connected (1 SCC)."""
     edges: dict[str, Edge] = {
         "e1": Edge(edge_id="e1", from_node="a", to_node="b", length_m=100),
         "e2": Edge(edge_id="e2", from_node="b", to_node="c", length_m=100),
@@ -123,7 +123,7 @@ def test_connectivity_directed_ring() -> None:
 
 
 # =========================================================================
-# AC④ — Station Position Non-Overlap (minimum distance constraint)
+# AC4 -- Station Position Non-Overlap (minimum distance constraint)
 # =========================================================================
 
 
@@ -161,7 +161,7 @@ def _check_station_min_distance(
 
 
 def test_stations_no_overlap_3x3_grid() -> None:
-    """AC④: Stations generated on a 3×3 grid must respect min_distance_km."""
+    """AC4: Stations generated on a 3x3 grid must respect min_distance_km."""
     nodes, edges = _build_3x3_grid()
     min_dist = 0.3  # 300 m
     stations = generate_stations(
@@ -172,12 +172,12 @@ def test_stations_no_overlap_3x3_grid() -> None:
     violations = _check_station_min_distance(stations, min_dist)
     assert not violations, (
         f"Found {len(violations)} station pair(s) below {min_dist} km: "
-        + ", ".join(f"{a}↔{b}={d:.4f}km" for a, b, d in violations)
+        + ", ".join(f"{a}<->{b}={d:.4f}km" for a, b, d in violations)
     )
 
 
 def test_stations_tight_min_distance_allows_more() -> None:
-    """AC④: Smaller min_distance_km allows more stations."""
+    """AC4: Smaller min_distance_km allows more stations."""
     nodes, edges = _build_3x3_grid()
     relaxed = generate_stations(nodes, edges, min_distance_km=0.01, min_capacity=10, max_capacity=50)
     strict = generate_stations(nodes, edges, min_distance_km=0.5, min_capacity=10, max_capacity=50)
@@ -187,18 +187,18 @@ def test_stations_tight_min_distance_allows_more() -> None:
 
 
 # =========================================================================
-# AC⑤ — Boundary Cases
+# AC5 -- Boundary Cases
 # =========================================================================
 
 
 def test_empty_city_returns_no_stations() -> None:
-    """AC⑤: Empty nodes/edges must produce zero stations."""
+    """AC5: Empty nodes/edges must produce zero stations."""
     stations = generate_stations({}, {}, min_capacity=10, max_capacity=50)
     assert stations == {}
 
 
 def test_single_node_no_edges_returns_fallback() -> None:
-    """AC⑤: A city with one node and no edges falls back to grid placement."""
+    """AC5: A city with one node and no edges falls back to grid placement."""
     nodes = {
         "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
     }
@@ -209,7 +209,7 @@ def test_single_node_no_edges_returns_fallback() -> None:
 
 
 def test_single_node_no_edges_max_stations_zero() -> None:
-    """AC⑤: Single node with max_stations=0 or similar limit."""
+    """AC5: Single node with max_stations=0 or similar limit."""
     nodes = {
         "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
     }
@@ -219,7 +219,8 @@ def test_single_node_no_edges_max_stations_zero() -> None:
 
 
 def test_broken_edge_refers_to_missing_node() -> None:
-    """AC⑤: generate_stations must not crash if an edge refs a non-existent node."""
+    """AC5: generate_stations must not crash if an edge refs a non-existent node
+    and must still produce a station for the valid node."""
     nodes = {
         "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
     }
@@ -231,13 +232,19 @@ def test_broken_edge_refers_to_missing_node() -> None:
             length_m=100,
         ),
     }
-    # Must not raise KeyError
+    # Must not raise KeyError, and valid node n1 should still get a station
     stations = generate_stations(nodes, edges, min_capacity=10, max_capacity=50)
     assert isinstance(stations, dict)
+    assert len(stations) > 0, "Should produce at least 1 station from valid node n1"
+    station_ids = list(stations.keys())
+    assert any("n1" in sid for sid in station_ids), (
+        f"Expected a station near n1, got: {station_ids}"
+    )
 
 
 def test_oversized_coordinates() -> None:
-    """AC⑤: Station generation must handle nodes with lat/lng outside ±90/±180 gracefully."""
+    """AC5: Station generation must handle nodes with lat/lng outside +/-90/+/-180 gracefully.
+    The valid node should still produce a station; the invalid one should be skipped."""
     nodes = {
         "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
         "n2": Node(node_id="n2", position=LatLng(999.0, 116.4)),  # invalid lat
@@ -245,10 +252,18 @@ def test_oversized_coordinates() -> None:
     edges = {
         "e1": Edge(edge_id="e1", from_node="n1", to_node="n2", length_m=100),
     }
-    # haversine handles out-of-range values mathematically (just incorrect result)
-    # but should not crash
+    # Should not crash, and at least n1 should get a station
     stations = generate_stations(nodes, edges, min_capacity=10, max_capacity=50)
     assert isinstance(stations, dict)
+    assert len(stations) > 0, "Should produce at least 1 station from valid node n1"
+    station_ids = list(stations.keys())
+    assert any("n1" in sid for sid in station_ids), (
+        f"Expected a station near n1, got: {station_ids}"
+    )
+    # n2 with lat=999 should not produce a station
+    assert not any("n2" in sid for sid in station_ids), (
+        f"Did not expect a station near invalid n2, got: {station_ids}"
+    )
 
 
 # =========================================================================
@@ -257,14 +272,14 @@ def test_oversized_coordinates() -> None:
 
 
 def _build_3x3_grid() -> tuple[dict[str, Node], dict[str, Edge]]:
-    """Build a 3×3 grid road network.
+    """Build a 3x3 grid road network.
 
     Topology:
-      n1 ── n2 ── n3
-      │     │     │
-      n4 ── n5 ── n6
-      │     │     │
-      n7 ── n8 ── n9
+      n1 -- n2 -- n3
+      |     |     |
+      n4 -- n5 -- n6
+      |     |     |
+      n7 -- n8 -- n9
 
     9 nodes, 12 bidirectional edges (24 directed records).
     """
@@ -285,46 +300,42 @@ def _build_3x3_grid() -> tuple[dict[str, Node], dict[str, Edge]]:
         nodes[nid] = Node(node_id=nid, position=LatLng(lat, lng))
 
     edges: dict[str, Edge] = {}
+    _edge_counter = itertools.count(1)
+
+    def _add_bidirectional_edge(
+        from_id: str,
+        to_id: str,
+        length_m: float = 100.0,
+    ) -> None:
+        """Add both directions for a two-way road segment."""
+        n = next(_edge_counter)
+        edges[f"e{n}a"] = Edge(
+            edge_id=f"e{n}a",
+            from_node=from_id,
+            to_node=to_id,
+            length_m=length_m,
+        )
+        n = next(_edge_counter)
+        edges[f"e{n}b"] = Edge(
+            edge_id=f"e{n}b",
+            from_node=to_id,
+            to_node=from_id,
+            length_m=length_m,
+        )
+
     # Horizontal edges (row 1-3)
     for row_start in ("n1", "n4", "n7"):
         n_a = row_start
         n_b = f"n{int(row_start[1]) + 1}"
-        _add_bidirectional_edge(edges, n_a, n_b)
+        _add_bidirectional_edge(n_a, n_b)
         n_c = f"n{int(row_start[1]) + 2}"
-        _add_bidirectional_edge(edges, n_b, n_c)
+        _add_bidirectional_edge(n_b, n_c)
     # Vertical edges (col 1-3)
     for col_offset in (0, 1, 2):
         top_id = f"n{1 + col_offset}"
         mid_id = f"n{4 + col_offset}"
         bot_id = f"n{7 + col_offset}"
-        _add_bidirectional_edge(edges, top_id, mid_id)
-        _add_bidirectional_edge(edges, mid_id, bot_id)
+        _add_bidirectional_edge(top_id, mid_id)
+        _add_bidirectional_edge(mid_id, bot_id)
 
     return nodes, edges
-
-
-_edge_counter = 0
-
-
-def _add_bidirectional_edge(
-    edges: dict[str, Edge],
-    from_id: str,
-    to_id: str,
-    length_m: float = 100.0,
-) -> None:
-    """Add both directions for a two-way road segment."""
-    global _edge_counter
-    _edge_counter += 1
-    edges[f"e{_edge_counter}a"] = Edge(
-        edge_id=f"e{_edge_counter}a",
-        from_node=from_id,
-        to_node=to_id,
-        length_m=length_m,
-    )
-    _edge_counter += 1
-    edges[f"e{_edge_counter}b"] = Edge(
-        edge_id=f"e{_edge_counter}b",
-        from_node=to_id,
-        to_node=from_id,
-        length_m=length_m,
-    )
