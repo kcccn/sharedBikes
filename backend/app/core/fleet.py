@@ -14,8 +14,9 @@ class BikeStatus(Enum):
     DAMAGED = "damaged"
 
 
-@dataclass
 class Bike(NamedTuple):
+    """Immutable value object representing a single bike at a point in time."""
+
     id: str
     status: BikeStatus = BikeStatus.DOCKED
     station_id: str | None = None
@@ -46,6 +47,14 @@ class FleetSnapshot:
         return self.active_bikes / self.total_bikes
 
 
+class BikeNotFoundError(ValueError):
+    """Raised when an operation references a non-existent bike."""
+
+
+class BikeNotDockedError(ValueError):
+    """Raised when undocking a bike that is not currently docked."""
+
+
 @dataclass
 class Fleet:
     """Mutable fleet state — the single source of truth during a simulation run."""
@@ -60,6 +69,16 @@ class Fleet:
         )
 
     def dock_bike(self, bike_id: str, station_id: str) -> None:
+        """
+        Dock *bike_id* at *station_id*.
+
+        If the bike is already docked at another station it is undocked first,
+        making this operation idempotent with respect to inventory integrity.
+        """
+        if bike_id not in self.bikes:
+            raise BikeNotFoundError(bike_id)
+        # Undock from previous station first to avoid duplicates
+        self.undock_bike(bike_id)
         bike = self.bikes[bike_id]
         self.bikes[bike_id] = bike._replace(
             status=BikeStatus.DOCKED, station_id=station_id
@@ -67,10 +86,27 @@ class Fleet:
         self.station_inventory.setdefault(station_id, []).append(bike_id)
 
     def undock_bike(self, bike_id: str) -> str | None:
-        """Remove bike from its station; return old station id or None."""
+        """
+        Remove *bike_id* from its station and mark it IN_USE.
+
+        Returns the previous station_id, or ``None`` if the bike was not
+        docked at any station.
+
+        Raises ``BikeNotFoundError`` if the bike does not exist.
+        Raises ``BikeNotDockedError`` if the bike is LOST or DAMAGED.
+        """
         bike = self.bikes.get(bike_id)
-        if bike is None or bike.station_id is None:
+        if bike is None:
+            raise BikeNotFoundError(bike_id)
+
+        if bike.status not in (BikeStatus.DOCKED, BikeStatus.IN_USE):
+            raise BikeNotDockedError(
+                f"Bike {bike_id} is {bike.status.value}, cannot undock"
+            )
+
+        if bike.station_id is None:
             return None
+
         old = bike.station_id
         self.bikes[bike_id] = bike._replace(status=BikeStatus.IN_USE, station_id=None)
         inv = self.station_inventory.get(old, [])
