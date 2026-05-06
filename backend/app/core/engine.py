@@ -1,4 +1,4 @@
-"""Simulation engine — the main tick loop that drives the simulation."""
+"""SimulationEngine — main loop orchestrating tick-by-tick simulation."""
 
 from __future__ import annotations
 
@@ -17,63 +17,73 @@ class SimState(Enum):
     PAUSED = auto()
 
 
-class SimulationNotRunningError(Exception):
-    """Raised when an action requires the engine to be RUNNING."""
+class SimulationNotRunningError(RuntimeError):
+    """Raised when an action requires the simulation to be RUNNING."""
 
 
 @dataclass
 class SimulationEngine:
-    """The central simulation driver — ticks forward simulation time."""
+    """Drives the simulation forward tick by tick."""
 
     city: City
-    fleet: Fleet = field(default_factory=Fleet)
-    environment: Environment = field(default_factory=Environment)
-    config: dict | None = None
+    fleet: Fleet
+    environment: Environment
+    strategy: RebalanceStrategy
 
-    tick: int = 0
     state: SimState = SimState.STOPPED
+    tick: int = 0
     ticks_per_day: int = 1440
     speed_multiplier: int = 60
-    rebalance_strategy: RebalanceStrategy | None = None
+
+    _accumulator: int = 0
 
     def start(self) -> None:
-        """Start (or resume) the simulation."""
-        if self.state == SimState.STOPPED:
-            # Initialise fleet from city stations on first start
-            pass  # TODO(phase-1): deploy initial bikes
         self.state = SimState.RUNNING
 
     def pause(self) -> None:
-        """Pause the simulation."""
-        if self.state != SimState.RUNNING:
-            raise SimulationNotRunningError("Engine is not running")
+        if self.state == SimState.STOPPED:
+            raise SimulationNotRunningError("Cannot pause a stopped simulation")
         self.state = SimState.PAUSED
 
     def stop(self) -> None:
-        """Stop the simulation and reset state."""
         self.state = SimState.STOPPED
-        self.tick = 0
 
     def advance(self, steps: int = 1) -> FleetSnapshot:
-        """Advance forward *steps* ticks.  Raises if engine is not RUNNING."""
+        """Advance simulation by *steps* ticks (only if RUNNING)."""
         if self.state != SimState.RUNNING:
             raise SimulationNotRunningError(
-                "Cannot advance — engine is not RUNNING"
+                f"Simulation is {self.state.name}, not RUNNING"
             )
         for _ in range(steps):
             self._tick()
         return self.fleet.snapshot()
 
-    def time_of_day(self) -> str:
-        """Return the current simulated time as 'HH:MM'."""
-        total_minutes = (self.tick % self.ticks_per_day) // self.speed_multiplier
-        h, m = divmod(total_minutes, 60)
-        return f"{h:02d}:{m:02d}"
-
     def _tick(self) -> None:
         """Execute one simulation tick."""
         self.tick += 1
+        self.environment.tick()
+        # TODO(phase-2): generate trips based on demand model
+        # TODO(phase-2): execute rebalance orders periodically
 
-        # TODO(phase-2): NPC trip generation
-        # TODO(phase-2): weather updates
-        # TODO(phase-2): periodic rebalancing
+    def time_of_day(self) -> str:
+        """Return formatted simulation time HH:MM."""
+        half_day = self.ticks_per_day // 2
+        mod = self.tick % half_day
+        h, m = divmod(mod, 60)
+        return f"{h:02d}:{m:02d}"
+
+    @property
+    def day_number(self) -> int:
+        return self.tick // self.ticks_per_day
+
+    def rebalance(self) -> None:
+        """Run the rebalance strategy and produce dispatch orders."""
+        station_inv: dict[str, int] = {}
+        station_cap: dict[str, int] = {}
+        for sid, station in self.city.stations.items():
+            station_inv[sid] = len(self.fleet.bikes_at_station(sid))
+            station_cap[sid] = station.capacity
+
+        report = self.strategy.analyse(station_inv, station_cap)
+        # TODO(phase-3): execute orders against a dispatch queue
+        _ = report  # placeholder
