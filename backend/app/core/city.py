@@ -1,4 +1,4 @@
-"""City geometry and network entities."""
+"""City model — immutable road network, stations, zones, and spatial queries."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import NamedTuple
 
 
 class LatLng(NamedTuple):
-    """Geographic coordinate in WGS-84."""
+    """An immutable geographic coordinate pair."""
 
     lat: float
     lng: float
@@ -16,21 +16,20 @@ class LatLng(NamedTuple):
 
 @dataclass(frozen=True)
 class Node:
-    """A road-network node (intersection / point)."""
+    """A road-network node (intersection or dead-end)."""
 
     node_id: str
     position: LatLng
-    elevation: float = 0.0
 
 
 @dataclass(frozen=True)
 class Edge:
-    """A directed road segment connecting two nodes."""
+    """A directed road segment between two nodes."""
 
     edge_id: str
-    from_node: Node
-    to_node: Node
-    length_m: float  # metres
+    source: str  # source node_id
+    target: str  # target node_id
+    length_m: float
     max_speed_kmh: float = 30.0
 
 
@@ -42,52 +41,71 @@ class Station:
     name: str
     position: LatLng
     capacity: int
-    zone_id: str | None = None
+    zone_id: str = ""
 
 
 @dataclass(frozen=True)
 class Zone:
-    """A named urban zone (e.g. 'CBD', 'University')."""
+    """A named operational zone (e.g. 'CBD', 'University', 'Residential')."""
 
     zone_id: str
     name: str
-    polygon: list[LatLng]  # simplified closed polygon
+    polygon_vertices: tuple[LatLng, ...] = ()
 
 
 @dataclass(frozen=True)
 class City:
-    """The immutable city road network graph."""
+    """Immutable city model — built once, queried many times."""
 
     name: str
-    nodes: tuple[Node, ...]
-    edges: tuple[Edge, ...]
-    stations: tuple[Station, ...]
-    zones: tuple[Zone, ...]
+    nodes: dict[str, Node]
+    edges: dict[str, Edge]
+    stations: dict[str, Station]
+    zones: dict[str, Zone]
 
-    def find_station(self, station_id: str) -> Station | None:
-        return next(
-            (s for s in self.stations if s.station_id == station_id),
-            None,
-        )
+    # ── derived indices ──────────────────────────────────────────────
+    _station_positions: dict[str, tuple[float, float]] | None = None
 
-    def nearest_station(self, pos: LatLng) -> Station | None:
-        """Return the station closest to `pos` by haversine distance."""
-        best: Station | None = None
-        best_dist = float("inf")
-        for s in self.stations:
-            d = _haversine(pos.lat, pos.lng, s.position.lat, s.position.lng)
+    def __post_init__(self) -> None:
+        positions = {
+            sid: (s.position.lat, s.position.lng)
+            for sid, s in self.stations.items()
+        }
+        object.__setattr__(self, "_station_positions", positions)
+
+    # ── queries ──────────────────────────────────────────────────────
+
+    def find_nearest_station(self, position: LatLng) -> tuple[str, float] | None:
+        """Return (station_id, distance_m) of the nearest station."""
+        best: tuple[str, float] | None = None
+        best_dist = math.inf
+        for sid, (slat, slng) in self._station_positions.items():
+            d = _haversine(position.lat, position.lng, slat, slng)
             if d < best_dist:
                 best_dist = d
-                best = s
+                best = (sid, d)
         return best
 
+    def stations_in_zone(self, zone_id: str) -> list[Station]:
+        return [s for s in self.stations.values() if s.zone_id == zone_id]
+
+    def total_capacity(self) -> int:
+        return sum(s.capacity for s in self.stations.values())
+
+
+# ── internal helpers ────────────────────────────────────────────────
 
 def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle distance in metres between two WGS-84 points."""
+    """Great-circle distance in metres between two lat/lng points."""
     R = 6_371_000.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlng / 2) ** 2
+    )
+    # clamp to [0, 1] to guard against floating-point overshoot
+    a = max(0.0, min(1.0, a))
+    return R * 2.0 * math.asin(math.sqrt(a))
