@@ -5,19 +5,46 @@ from pydantic import BaseModel
 
 # ---- City ----
 
+class NodeOut(BaseModel):
+    node_id: str
+    lat: float
+    lng: float
+    elevation_m: float
+
+
+class EdgeOut(BaseModel):
+    edge_id: str
+    from_node: str
+    to_node: str
+    length_m: float
+    max_speed_kmh: float
+
+
 class StationOut(BaseModel):
     station_id: str
     lat: float
     lng: float
     capacity: int
     name: str
-    available_bikes: int
+    available_bikes: int = 0
+
+
+class ZoneOut(BaseModel):
+    zone_id: str
+    name: str
+    polygon: list[tuple[float, float]]
 
 
 class CityOut(BaseModel):
     name: str
+    node_count: int
+    edge_count: int
     station_count: int
     zone_count: int
+    nodes: list[NodeOut] = []
+    edges: list[EdgeOut] = []
+    stations: list[StationOut] = []
+    zones: list[ZoneOut] = []
 
 
 # ---- Fleet ----

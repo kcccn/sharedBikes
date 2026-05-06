@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  empty.osm — Valid OSM XML with zero nodes and zero ways.
+
+  This fixture exercises the "empty city" edge case:
+  a legally parsed OSM file that contains no road network data.
+  The parser should handle this gracefully (return empty
+  nodes/edges dictionaries) rather than crashing.
+-->
+<osm version="0.6" generator="hand-crafted">
+</osm>
