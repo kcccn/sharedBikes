@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  broken_ref.osm — OSM XML with a way referencing a non-existent node.
+
+  This fixture exercises the "broken data" edge case:
+  way 101 references node "999" which is not defined in this file.
+  The parser should detect the dangling reference and either skip
+  the way or raise a descriptive error — but never crash with a
+  silent KeyError or produce a City with an edge that has no
+  matching node.
+
+  Nodes 1 and 2 are valid to make the broken ref non-trivial
+  (not all data is bad).
+-->
+<osm version="0.6" generator="hand-crafted">
+  <node id="1" lat="39.9200" lon="116.4000" version="1"/>
+  <node id="2" lat="39.9200" lon="116.4100" version="1"/>
+
+  <!-- Valid way — references nodes that exist -->
+  <way id="100" version="1">
+    <nd ref="1"/><nd ref="2"/>
+    <tag k="highway" v="residential"/>
+  </way>
+
+  <!-- Broken way — references node 999 which does not exist -->
+  <way id="101" version="1">
+    <nd ref="1"/><nd ref="999"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>
