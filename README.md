@@ -34,7 +34,7 @@
 
 ## 🛠️ 技术栈构想 (Tech Stack)
 
-*(欢迎在 Issue 中参与讨论！)*
+*(欢迎在 [Issue 中参与讨论](https://github.com/kcccn/sharedBikes/issues))！*
 
 *   **前端与可视化：** React / Vue3 + Deck.gl / Mapbox GL JS (处理大规模 WebGL 地理数据渲染)
 *   **后端与模拟引擎：** Python (FastAPI) / Go + PostGIS (处理复杂空间查询)
@@ -53,11 +53,11 @@
 ### Phase 1: 基础设施 — 真实地图解析与静态车辆投放
 | 任务 | 状态 | 说明 |
 |------|------|------|
-| [#31 RFC: 方案设计](https://github.com/kcccn/sharedBikes/issues/31) | 🆕 讨论中 | 选型 osmnx vs osmium，确定技术路线 |
-| [#32 OSM 路网解析](https://github.com/kcccn/sharedBikes/issues/32) | 📋 待开始 | OSM 数据 → City.Node/Edge 转换 |
-| [#33 站点自动放置](https://github.com/kcccn/sharedBikes/issues/33) | 📋 待开始 | 在路网上自动生成 Station |
+| [#21 RFC: 方案设计](https://github.com/kcccn/sharedBikes/issues/21) | 🆕 讨论中 | 选型 osmnx vs osmium，确定技术路线 |
+| [#23 OSM 路网解析](https://github.com/kcccn/sharedBikes/issues/23) | 📋 待开始 | OSM 数据 → City.Node/Edge 转换 |
+| [#25 站点自动放置](https://github.com/kcccn/sharedBikes/issues/25) | 📋 待开始 | 在路网上自动生成 Station |
 | [#34 城市配置系统](https://github.com/kcccn/sharedBikes/issues/34) | 📋 待开始 | YAML 配置 + 多城市支持 |
-| [#35 MapService 集成](https://github.com/kcccn/sharedBikes/issues/35) | 📋 待开始 | 解析器+布站+缓存的完整管线 |
+| [#27 MapService 集成](https://github.com/kcccn/sharedBikes/issues/27) | 📋 待开始 | 解析器+布站+缓存的完整管线 |
 | [#36 集成测试 & 演示](https://github.com/kcccn/sharedBikes/issues/36) | 📋 待开始 | E2E 验证与演示脚本 |
 
 ### Phase 2: 动态城市
@@ -71,4 +71,4 @@
 
 ## 🤝 参与贡献 (Contributing)
 
-无论你是 GIS 专家、前端数据可视化狂魔，还是对城市规划与交通算法感兴趣的极客，这里都欢迎你的加入！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 获取更多信息。
+无论你是 GIS 专家、前端数据可视化狂魔，还是对城市规划与交通算法感兴趣的极客，这里都欢迎你的加入！请查看 [Issues](https://github.com/kcccn/sharedBikes/issues) 页面，从 Phase 1 的讨论开始参与吧。
