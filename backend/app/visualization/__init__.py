@@ -1,1 +1,1 @@
-"""Visualisation stubs (heatmap, OD flow generation)."""
+"""Visualization helpers — heatmap, OD flow generation."""
