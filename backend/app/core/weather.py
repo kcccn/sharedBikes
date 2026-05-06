@@ -1,78 +1,64 @@
-"""Weather & environmental conditions model."""
+"""Weather and environmental conditions affecting simulation."""
 
 from __future__ import annotations
 
-import math
+import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import NamedTuple
 
 
 class WeatherCondition(Enum):
     CLEAR = auto()
     CLOUDY = auto()
-    RAIN = auto()
-    STORM = auto()
-    SNOW = auto()
+    RAINY = auto()
+    STORMY = auto()
+    SNOWY = auto()
 
 
 @dataclass
 class SpecialEvent:
-    """A temporary event that affects demand in a region."""
+    """A one-off event that influences demand (concert, festival, etc.)."""
 
-    id: str
+    event_id: str
     name: str
-    centre_lat: float
-    centre_lng: float
+    station_id: str
     radius_km: float
     demand_multiplier: float = 2.0
-    start_tick: int = 0
-    end_tick: int = 60
+    duration_ticks: int = 120
+    remaining_ticks: int = 120
+
+    @property
+    def active(self) -> bool:
+        return self.remaining_ticks > 0
+
+    def tick(self) -> None:
+        if self.remaining_ticks > 0:
+            self.remaining_ticks -= 1
 
 
 @dataclass
 class Environment:
-    """The current environmental state of the simulation."""
+    """Weather + events affecting the city at a given tick."""
 
     condition: WeatherCondition = WeatherCondition.CLEAR
-    temperature_c: float = 20.0
+    temperature_c: float = 25.0
     wind_speed_kmh: float = 0.0
-    precipitation_mm: float = 0.0
-    special_events: list[SpecialEvent] = field(default_factory=list)
+    events: dict[str, SpecialEvent] = field(default_factory=dict)
 
     def demand_factor(self) -> float:
-        """Return a multiplier [0, 1] representing how weather suppresses demand."""
-        factor = 1.0
-        if self.condition == WeatherCondition.RAIN:
-            factor *= 0.5
-        elif self.condition == WeatherCondition.STORM:
-            factor *= 0.15
-        elif self.condition == WeatherCondition.SNOW:
-            factor *= 0.3
-        elif self.condition == WeatherCondition.CLOUDY:
-            factor *= 0.9
-        return max(factor, 0.0)
+        """Overall multiplier applied to base demand (1.0 = normal)."""
+        base = 1.0
+        if self.condition in (WeatherCondition.RAINY, WeatherCondition.STORMY):
+            base *= 0.4
+        elif self.condition == WeatherCondition.SNOWY:
+            base *= 0.2
+        return base
 
-    def event_factor_at(self, lat: float, lng: float) -> float:
-        """Return the compound demand multiplier for all active events at (lat, lng)."""
-        factor = 1.0
-        for event in self.special_events:
-            d = self._haversine(lat, lng, event.centre_lat, event.centre_lng)
-            if d <= event.radius_km:
-                factor *= event.demand_multiplier
-        return factor
-
-    @staticmethod
-    def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-        """Great-circle distance in km between two lat/lng points."""
-        R = 6371.0
-        dlat = math.radians(lat2 - lat1)
-        dlng = math.radians(lng2 - lng1)
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(math.radians(lat1))
-            * math.cos(math.radians(lat2))
-            * math.sin(dlng / 2) ** 2
-        )
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
+    def tick(self) -> None:
+        """Advance environment one tick (random weather drift, event decay)."""
+        if random.random() < 0.01:  # ~1 % chance of change per tick
+            self.condition = random.choice(list(WeatherCondition))
+        for event in list(self.events.values()):
+            event.tick()
+            if not event.active:
+                del self.events[event.event_id]
