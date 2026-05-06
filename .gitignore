@@ -1,15 +1,11 @@
 # Python
 __pycache__/
 *.py[cod]
-*.so
 *.egg-info/
 dist/
 build/
-.eggs/
-
-# Virtual environments
-venv/
 .venv/
+venv/
 env/
 
 # IDE
@@ -17,6 +13,7 @@ env/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
@@ -26,6 +23,7 @@ Thumbs.db
 .env
 .env.local
 
-# Project specific
-*.log
-data/
+# Project
+backend/data/
+*.osm
+*.pbf
