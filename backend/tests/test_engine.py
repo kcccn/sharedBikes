@@ -64,7 +64,33 @@ def test_stop(engine: SimulationEngine) -> None:
 
 def test_time_of_day(engine: SimulationEngine) -> None:
     engine.start()
-    engine.advance(60)  # 60 ticks = 1 hour (with ticks_per_day=1440, half_day=720)
+    engine.advance(60)  # 60 ticks = 1 hour
     tod = engine.time_of_day()
-    # 60 % 720 = 60 → 01:00
     assert tod == "01:00"
+
+
+def test_time_of_day_does_not_reset_at_noon(engine: SimulationEngine) -> None:
+    """Regression test: time_of_day() must not reset at midday.
+
+    With ticks_per_day=1440, tick=720 should yield 12:00, not 00:00.
+    """
+    engine.start()
+    engine.advance(720)  # 720 ticks = 12 hours (noon)
+    assert engine.time_of_day() == "12:00"
+
+
+def test_time_of_day_end_of_day(engine: SimulationEngine) -> None:
+    engine.start()
+    engine.advance(1439)  # 1439 ticks = 23:59
+    assert engine.time_of_day() == "23:59"
+    engine.advance(1)  # 1440 ticks → next day 00:00
+    assert engine.time_of_day() == "00:00"
+
+
+def test_day_number(engine: SimulationEngine) -> None:
+    engine.start()
+    assert engine.day_number == 0
+    engine.advance(1440)
+    assert engine.day_number == 1
+    engine.advance(1440)
+    assert engine.day_number == 2
