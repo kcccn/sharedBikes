@@ -62,9 +62,30 @@ def test_stop(engine: SimulationEngine) -> None:
     assert engine.state == SimState.STOPPED
 
 
-def test_time_of_day(engine: SimulationEngine) -> None:
+def test_time_of_day_morning(engine: SimulationEngine) -> None:
+    """60 ticks after midnight → 01:00."""
     engine.start()
-    engine.advance(60)  # 60 ticks = 1 hour (with ticks_per_day=1440, half_day=720)
-    tod = engine.time_of_day()
-    # 60 % 720 = 60 → 01:00
-    assert tod == "01:00"
+    engine.advance(60)
+    assert engine.time_of_day() == "01:00"
+
+
+def test_time_of_day_noon(engine: SimulationEngine) -> None:
+    """720 ticks after midnight → 12:00 (not 00:00 — regression guard)."""
+    engine.start()
+    engine.advance(720)
+    assert engine.time_of_day() == "12:00"
+
+
+def test_time_of_day_almost_midnight(engine: SimulationEngine) -> None:
+    """1439 ticks → 23:59."""
+    engine.start()
+    engine.advance(1439)
+    assert engine.time_of_day() == "23:59"
+
+
+def test_time_of_day_rollover_to_new_day(engine: SimulationEngine) -> None:
+    """1440 ticks → 00:00 (next day, not 12:00)."""
+    engine.start()
+    engine.advance(1440)
+    assert engine.time_of_day() == "00:00"
+    assert engine.day_number == 1
