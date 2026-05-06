@@ -1,22 +1,22 @@
-"""CityBike-Sim: FastAPI application entry point."""
+"""FastAPI application entry point."""
+
+from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api.v1.router import api_router
-from app.config import AppConfig
+from app.api.v1.router import router as api_router
+from app.config import config
 
 app = FastAPI(
-    title="CityBike-Sim API",
-    description="Urban shared bike simulation and visualization backend",
+    title=config.app_name,
     version="0.1.0",
+    docs_url="/docs",
 )
 
-config = AppConfig()
+app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.0"}
-
-
-app.include_router(api_router, prefix="/api/v1")
+    """Liveness check."""
+    return {"status": "ok", "app": config.app_name}
