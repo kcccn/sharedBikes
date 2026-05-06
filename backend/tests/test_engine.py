@@ -62,9 +62,50 @@ def test_stop(engine: SimulationEngine) -> None:
     assert engine.state == SimState.STOPPED
 
 
-def test_time_of_day(engine: SimulationEngine) -> None:
+def test_time_of_day_midnight(engine: SimulationEngine) -> None:
+    """Tick 0 should be 00:00 (midnight start)."""
+    assert engine.time_of_day() == "00:00"
+
+
+def test_time_of_day_one_hour(engine: SimulationEngine) -> None:
+    """60 ticks = 1 hour → 01:00."""
     engine.start()
-    engine.advance(60)  # 60 ticks = 1 hour (with ticks_per_day=1440, half_day=720)
-    tod = engine.time_of_day()
-    # 60 % 720 = 60 → 01:00
-    assert tod == "01:00"
+    engine.advance(60)
+    assert engine.time_of_day() == "01:00"
+
+
+def test_time_of_day_noon(engine: SimulationEngine) -> None:
+    """720 ticks = 12 hours → 12:00 (noon), not a reset to 00:00."""
+    engine.start()
+    engine.advance(720)
+    assert engine.time_of_day() == "12:00"
+
+
+def test_time_of_day_afternoon(engine: SimulationEngine) -> None:
+    """780 ticks = 13 hours → 13:00, not a reset to 01:00."""
+    engine.start()
+    engine.advance(780)
+    assert engine.time_of_day() == "13:00"
+
+
+def test_time_of_day_end_of_day(engine: SimulationEngine) -> None:
+    """1439 ticks = 23:59 (last minute of the day)."""
+    engine.start()
+    engine.advance(1439)
+    assert engine.time_of_day() == "23:59"
+
+
+def test_time_of_day_wraps_to_next_day(engine: SimulationEngine) -> None:
+    """1440 ticks = full day → wraps to 00:00 (next midnight)."""
+    engine.start()
+    engine.advance(1440)
+    assert engine.time_of_day() == "00:00"
+    assert engine.day_number == 1
+
+
+def test_time_of_day_multi_day(engine: SimulationEngine) -> None:
+    """1500 ticks = day 1, 01:00 (one hour into the second day)."""
+    engine.start()
+    engine.advance(1500)
+    assert engine.time_of_day() == "01:00"
+    assert engine.day_number == 1
