@@ -5,30 +5,98 @@ from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     BikeOut,
     CityOut,
+    EdgeOut,
     EventOut,
     FleetOut,
     FlowLine,
     HeatmapCell,
+    NodeOut,
     SimConfigIn,
     SimStatusOut,
     StationOut,
+    ZoneOut,
 )
+from app.services.map_service import MapService
 
 api_router = APIRouter()
+_map_service = MapService()
+
+
+def _get_city_data(city_name: str = "Beijing") -> CityOut:
+    """Build a CityOut response from the MapService."""
+    city = _map_service.load_city(city_name)
+    nodes_out = [
+        NodeOut(
+            node_id=n.node_id,
+            lat=n.position.lat,
+            lng=n.position.lng,
+            elevation_m=n.elevation_m,
+        )
+        for n in city.nodes.values()
+    ]
+    edges_out = [
+        EdgeOut(
+            edge_id=e.edge_id,
+            from_node=e.from_node,
+            to_node=e.to_node,
+            length_m=e.length_m,
+            max_speed_kmh=e.max_speed_kmh,
+        )
+        for e in city.edges.values()
+    ]
+    stations_out = [
+        StationOut(
+            station_id=s.station_id,
+            lat=s.position.lat,
+            lng=s.position.lng,
+            capacity=s.capacity,
+            name=s.name,
+        )
+        for s in city.stations.values()
+    ]
+    zones_out = [
+        ZoneOut(
+            zone_id=z.zone_id,
+            name=z.name,
+            polygon=[(p.lat, p.lng) for p in z.polygon],
+        )
+        for z in city.zones.values()
+    ]
+    return CityOut(
+        name=city_name,
+        node_count=len(city.nodes),
+        edge_count=len(city.edges),
+        station_count=len(city.stations),
+        zone_count=len(city.zones),
+        nodes=nodes_out,
+        edges=edges_out,
+        stations=stations_out,
+        zones=zones_out,
+    )
 
 
 # ---- City ----
 
 @api_router.get("/city", response_model=CityOut)
 async def get_city():
-    """Return city overview (stub)."""
-    return CityOut(name="Beijing", station_count=0, zone_count=0)
+    """Return full city data (nodes, edges, stations, zones)."""
+    return _get_city_data()
 
 
 @api_router.get("/city/stations", response_model=list[StationOut])
 async def get_stations():
-    """Return all stations (stub)."""
-    return []
+    """Return all stations."""
+    city = _map_service.load_city("Beijing")
+    return [
+        StationOut(
+            station_id=s.station_id,
+            lat=s.position.lat,
+            lng=s.position.lng,
+            capacity=s.capacity,
+            name=s.name,
+        )
+        for s in city.stations.values()
+    ]
 
 
 # ---- Fleet ----
