@@ -2,28 +2,22 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-dist/
-build/
 .venv/
 venv/
-*.egg
+.env
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-
-# Environment
-.env
-.env.local
-
-# Testing
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Project
+data/
+*.osm
+*.pbf
+dist/
+build/
