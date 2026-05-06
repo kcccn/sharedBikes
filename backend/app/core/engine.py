@@ -66,9 +66,8 @@ class SimulationEngine:
         # TODO(phase-2): execute rebalance orders periodically
 
     def time_of_day(self) -> str:
-        """Return formatted simulation time HH:MM."""
-        half_day = self.ticks_per_day // 2
-        mod = self.tick % half_day
+        """Return formatted simulation time HH:MM within a 24-hour day."""
+        mod = self.tick % self.ticks_per_day
         h, m = divmod(mod, 60)
         return f"{h:02d}:{m:02d}"
 
