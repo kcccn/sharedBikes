@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -51,16 +52,17 @@ class RoadNetwork:
 
     def estimate_distance(self, start: GeoPoint, end: GeoPoint) -> float:
         """粗略估算骑行距离（使用 Haversine 公式的直线距离）。"""
-        from math asin, cos, radians, sin, sqrt
-
-        lat1, lng1 = radians(start.lat), radians(start.lng)
-        lat2, lng2 = radians(end.lat), radians(end.lng)
+        lat1, lng1 = math.radians(start.lat), math.radians(start.lng)
+        lat2, lng2 = math.radians(end.lat), math.radians(end.lng)
 
         dlat = lat2 - lat1
         dlng = lng2 - lng1
 
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlng / 2) ** 2
-        c = 2 * sqrt(a) if sqrt(a) <= 1 else 2.0  # clamp for safety
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+        )
+        c = 2 * math.asin(min(math.sqrt(a), 1.0))
 
         R = 6_371_000  # 地球半径（米）
         return R * c
