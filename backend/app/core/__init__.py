@@ -1,1 +1,1 @@
-"""Core domain logic — pure, no I/O dependencies."""
+"""Core domain models for the simulation engine."""
