@@ -54,8 +54,10 @@ class GreedyThresholdStrategy(RebalanceStrategy):
         overflowing: list[str] = []
 
         for sid, capacity in station_capacity.items():
+            if capacity <= 0:
+                continue  # skip closed / zero-capacity stations
             count = len(station_inventory.get(sid, []))
-            ratio = count / capacity if capacity > 0 else 0.0
+            ratio = count / capacity
             if ratio < self.low_ratio:
                 starving.append(sid)
             elif ratio > self.high_ratio:
