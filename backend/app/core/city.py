@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import NamedTuple
 
+from app.utils.geo import haversine
+
 
 class ZoneType(Enum):
     RESIDENTIAL = "residential"
@@ -24,8 +26,9 @@ class RoadClass(Enum):
     PATH = "path"
 
 
-@dataclass(frozen=True)
 class LatLng(NamedTuple):
+    """A pair of (lat, lng) coordinates on the WGS-84 reference ellipsoid."""
+
     lat: float
     lng: float
 
@@ -93,28 +96,12 @@ class City:
         """Return the nearest station to *pos* (Naive O(n) — optimise with spatial index later)."""
         if not self.stations:
             return None
-        best: tuple[float, Station] = (float("inf"), next(iter(self.stations.values())))
+        best: tuple[float, Station | None] = (float("inf"), None)
         for st in self.stations.values():
-            d = _haversine(pos, st.position)
+            d = haversine(pos.lat, pos.lng, st.position.lat, st.position.lng)
             if d < best[0]:
                 best = (d, st)
         return best[1]
 
     def stations_in_zone(self, zone_id: str) -> list[Station]:
         return [s for s in self.stations.values() if s.zone_id == zone_id]
-
-
-def _haversine(a: LatLng, b: LatLng) -> float:
-    """Great-circle distance in metres between two LatLng points."""
-    import math
-
-    R = 6_371_000.0
-    lat1, lon1 = math.radians(a.lat), math.radians(a.lng)
-    lat2, lon2 = math.radians(b.lat), math.radians(b.lng)
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    h = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    )
-    return 2 * R * math.asin(math.sqrt(h))
