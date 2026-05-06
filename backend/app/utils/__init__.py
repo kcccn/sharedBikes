@@ -1,1 +1,1 @@
-"""Utility package."""
+"""Utility functions — geographic, math, etc."""
