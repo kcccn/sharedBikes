@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -46,14 +47,17 @@ class AppConfig:
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
 
 
-# Global singleton — importers get `get_config()`.
+# Global singleton — thread-safe via double-checked locking.
 _config: AppConfig | None = None
+_config_lock = threading.Lock()
 
 
 def get_config() -> AppConfig:
     global _config
     if _config is None:
-        _config = AppConfig(
-            debug=os.getenv("CITYBIKE_DEBUG", "0") == "1",
-        )
+        with _config_lock:
+            if _config is None:
+                _config = AppConfig(
+                    debug=os.getenv("CITYBIKE_DEBUG", "0") == "1",
+                )
     return _config
