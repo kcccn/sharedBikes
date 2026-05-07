@@ -38,7 +38,7 @@ class TickEvents:
     trips: list[TripRequest] = field(default_factory=list)
     revenue: float = 0.0
     costs: float = 0.0
-    weather_change: str | None = None
+    weather: str = "CLEAR"
     station_inventory: dict[str, int] = field(default_factory=dict)
 
 
@@ -94,7 +94,7 @@ class SimulationEngine:
     def _tick(self) -> TickEvents:
         """Execute one simulation tick and return the events that occurred."""
         self.tick += 1
-        weather_change = self.environment.tick()
+        self.environment.tick()
 
         # Generate trip demand
         trips: list[TripRequest] = []
@@ -106,7 +106,6 @@ class SimulationEngine:
         for trip in trips:
             if trip.from_station in self.city.stations and trip.to_station in self.city.stations:
                 valid_trips.append(trip)
-            # TODO(phase-2): log dropped invalid trips for diagnostics
         trips = valid_trips
 
         # TODO(phase-2): execute trips (dock/undock bikes, compute revenue)
@@ -123,7 +122,7 @@ class SimulationEngine:
             trips=trips,
             revenue=0.0,
             costs=0.0,
-            weather_change=weather_change,
+            weather=self.environment.condition.name,
             station_inventory=station_inventory,
         )
 
