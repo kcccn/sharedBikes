@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from functools import cached_property
 from typing import NamedTuple
+
+import networkx as nx
 
 
 class LatLng(NamedTuple):
@@ -99,6 +102,56 @@ class City:
                 best_station = station
         return best_station, best_dist
 
+    @cached_property
+    def _graph(self) -> nx.Graph:
+        """Build an undirected NetworkX graph from nodes and edges (cached)."""
+        G = nx.Graph()
+        for node_id, node in self._nodes.items():
+            G.add_node(node_id, pos=node.position)
+        for edge_id, edge in self._edges.items():
+            G.add_edge(
+                edge.from_node,
+                edge.to_node,
+                id=edge_id,
+                length_m=edge.length_m,
+                weight=edge.length_m,
+            )
+        return G
+
+    def shortest_path_distance(self, station_a_id: str, station_b_id: str) -> float | None:
+        """Return shortest-path distance in km between two stations along the road network.
+
+        Uses the cached NetworkX graph. Returns ``None`` if either station
+        has no nearest road node or the graph is disconnected.
+        """
+        sta = self._stations.get(station_a_id)
+        stb = self._stations.get(station_b_id)
+        if sta is None or stb is None:
+            return None
+
+        # Find nearest graph node for each station
+        node_a = min(
+            self._graph.nodes,
+            key=lambda n: _haversine_km(self._graph.nodes[n]["pos"], sta.position),
+        )
+        node_b = min(
+            self._graph.nodes,
+            key=lambda n: _haversine_km(self._graph.nodes[n]["pos"], stb.position),
+        )
+
+        if node_a == node_b:
+            return 0.0
+
+        try:
+            path_len = nx.shortest_path_length(
+                self._graph, source=node_a, target=node_b, weight="weight"
+            )
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            return None
+
+        # Convert metres to km
+        return path_len / 1000.0
+
 
 # ---- internal helpers ----
 
@@ -110,5 +163,7 @@ def _haversine_km(a: LatLng, b: LatLng) -> float:
     dlng = math.radians(b.lng - a.lng)
     sin_dlat = math.sin(dlat / 2)
     sin_dlng = math.sin(dlng / 2)
-    h = sin_dlat * sin_dlat + math.cos(math.radians(a.lat)) * math.cos(math.radians(b.lat)) * sin_dlng * sin_dlng
+    h = sin_dlat * sin_dlat + math.cos(math.radians(a.lat)) * math.cos(
+        math.radians(b.lat)
+    ) * sin_dlng * sin_dlng
     return 2 * R * math.atan2(math.sqrt(h), math.sqrt(1 - h))

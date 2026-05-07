@@ -1,6 +1,12 @@
 """Demand service — generates trip requests per tick."""
 
+from __future__ import annotations
+
+import random
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+from app.core.city import Station
 
 
 @dataclass
@@ -12,14 +18,62 @@ class TripRequest:
     bike_id: str | None = None
 
 
-class DemandService:
+class TripGenerator(ABC):
+    """Abstract interface for trip-request generators."""
+
+    @abstractmethod
+    def generate(
+        self, tick: int, stations: dict[str, Station]
+    ) -> list[TripRequest]:
+        """Return trip requests for the given tick and available stations."""
+        ...
+
+
+class DemandService(TripGenerator):
     """Generates NPC trip demand based on time-of-day patterns."""
 
-    def generate(self, tick: int) -> list[TripRequest]:
+    def generate(
+        self, tick: int, stations: dict[str, Station]
+    ) -> list[TripRequest]:
         """Return trip requests for the given tick.
-        
+
         Phase 1: stub returning empty list.
         Phase 2+: real commuter-tide generation.
         """
-        _ = tick
+        _ = tick, stations
         return []
+
+
+class RuleBasedDemandService(TripGenerator):
+    """Minimal viable trip generator — good enough for v0.2.
+
+    Generates trips using simple time-of-day heuristics:
+    - Peak hours (7-9am, 5-7pm): higher trip rate
+    - Off-peak hours: lower trip rate
+    - Random OD pairs across available stations
+    """
+
+    def __init__(self, base_rate: float = 0.02, peak_rate: float = 0.08) -> None:
+        self.base_rate = base_rate
+        self.peak_rate = peak_rate
+
+    def generate(
+        self, tick: int, stations: dict[str, Station]
+    ) -> list[TripRequest]:
+        if not stations:
+            return []
+
+        hour = (tick % 1440) // 60
+        is_peak = (7 <= hour <= 9) or (17 <= hour <= 19)
+        rate = self.peak_rate if is_peak else self.base_rate
+
+        n_trips = max(1, int(len(stations) * rate * random.uniform(0.8, 1.2)))
+
+        station_ids = list(stations.keys())
+        from_ids = random.choices(station_ids, k=n_trips)
+        to_ids = random.choices(station_ids, k=n_trips)
+        return [
+            TripRequest(from_station=f, to_station=t)
+            for f, t in zip(from_ids, to_ids)
+            if f != t  # skip self-loops
+        ]
