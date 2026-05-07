@@ -1,8 +1,10 @@
 #!/bin/bash
 # Cleanup stale branches that have been merged into main
-# Usage: bash scripts/cleanup-stale-branches.sh [--dry-run]
+# Usage: bash scripts/cleanup-stale-branches.sh [--no-dry-run]
 #
-# This script lists and optionally deletes branches from merged PRs.
+# Default mode is dry-run (no changes made, just listing).
+# Pass --no-dry-run to actually delete merged stale branches.
+#
 # Protected branches (main, and branches with open PRs) are kept.
 
 set -euo pipefail
@@ -28,33 +30,57 @@ git fetch --prune origin
 REMOTE_BRANCHES=$(git branch -r | sed 's|origin/||' | grep -v 'HEAD' | sort)
 
 # Get branches with open PRs (protect these)
-OPEN_PR_BRANCHES=$(gh pr list --state open --json headRefName --jq '.[].headRefName' 2>/dev/null || echo "")
+if command -v gh &>/dev/null; then
+  OPEN_PR_BRANCHES=$(gh pr list --state open --json headRefName --jq '.[].headRefName' 2>/dev/null || echo "")
+else
+  echo "⚠️  WARNING: gh CLI not found — cannot detect open PR branches"
+  echo "   Branches with open PRs will NOT be protected!"
+  echo ""
+  OPEN_PR_BRANCHES=""
+fi
 
 echo "Open PR branches (protected):"
-echo "$OPEN_PR_BRANCHES" | sed 's/^/  - /'
+if [ -n "$OPEN_PR_BRANCHES" ]; then
+  echo "$OPEN_PR_BRANCHES" | sed 's/^/  - /'
+else
+  echo "  (none detected)"
+fi
 echo ""
+
+# Confirmation step for non-dry-run
+if [ "$DRY_RUN" = false ]; then
+  echo "⚠️  About to delete all merged stale branches (excluding protected ones)."
+  echo "   Type 'yes' to continue, anything else to abort:"
+  read -r CONFIRM
+  if [ "$CONFIRM" != "yes" ]; then
+    echo "Aborted."
+    exit 1
+  fi
+fi
 
 DELETED=0
 SKIPPED=0
 
 for branch in $REMOTE_BRANCHES; do
   # Skip protected branches
-  if printf '%s\n' "${PROTECTED[@]}" | grep -qx "$branch"; then
+  if printf '%s\n' "${PROTECTED[@]}" | grep -Fqx "$branch"; then
     echo "⏭️  PROTECTED: $branch"
     continue
   fi
 
   # Skip branches with open PRs
-  if echo "$OPEN_PR_BRANCHES" | grep -qx "$branch"; then
+  if [ -n "$OPEN_PR_BRANCHES" ] && echo "$OPEN_PR_BRANCHES" | grep -Fqx "$branch"; then
     echo "⏭️  OPEN PR: $branch"
     continue
   fi
 
   # Check if branch has been merged
-  if git branch -r --merged origin/main | grep -q "origin/$branch"; then
+  if git branch -r --merged origin/main | grep -Fq "origin/$branch"; then
     if [ "$DRY_RUN" = false ]; then
       echo "🗑️  Deleting: $branch"
-      git push origin --delete "$branch"
+      if ! git push origin --delete "$branch"; then
+        echo "⚠️  Failed to delete: $branch"
+      fi
     else
       echo "❌ Would delete: $branch (merged)"
     fi
