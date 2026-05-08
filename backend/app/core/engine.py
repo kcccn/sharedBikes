@@ -339,9 +339,9 @@ class SimulationEngine:
             today_revenue = self.ledger.revenue_total(tick_from, tick_to)  # type: ignore[union-attr]
             today_costs = self.ledger.cost_total(tick_from, tick_to)  # type: ignore[union-attr]
 
-            # Count dispatch movements today
+            # Sum dispatch counts — each tuple is (from, to, count)
             dispatch_total = sum(
-                len(te.dispatch_movements)
+                sum(c for _, _, c in te.dispatch_movements)
                 for te in self._events_history
                 if tick_from <= te.tick <= tick_to
             )
@@ -383,18 +383,3 @@ class SimulationEngine:
     @property
     def day_number(self) -> int:
         return self.tick // self.ticks_per_day
-
-    def rebalance(self) -> None:
-        """Run the rebalance strategy and produce dispatch orders.
-
-        Deprecated in Phase 3 — rebalancing is now integrated into ``_tick()``.
-        Kept for backward compatibility.
-        """
-        station_inv: dict[str, int] = {}
-        station_cap: dict[str, int] = {}
-        for sid, station in self.city.stations.items():
-            station_inv[sid] = len(self.fleet.bikes_at_station(sid))
-            station_cap[sid] = station.capacity
-
-        report = self.strategy.analyse(station_inv, station_cap)
-        _ = report  # placeholder
