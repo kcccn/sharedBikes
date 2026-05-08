@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.fleet import Fleet
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,28 @@ class RebalanceStrategy(ABC):
         threshold_high: float = 0.8,
     ) -> FleetBalanceReport:
         ...
+
+    def apply_orders(
+        self,
+        orders: list[DispatchOrder],
+        fleet: Fleet,
+    ) -> list[tuple[str, str, int]]:
+        """Execute dispatch orders against the fleet.
+
+        Args:
+            orders: List of dispatch orders to execute.
+            fleet: The fleet to execute orders against.
+
+        Returns:
+            List of (from_station, to_station, actual_count) tuples
+            representing successfully executed movements.
+        """
+        executed: list[tuple[str, str, int]] = []
+        for order in orders:
+            moved = fleet.relocate_bikes(order.from_station, order.to_station, order.count)
+            if moved > 0:
+                executed.append((order.from_station, order.to_station, moved))
+        return executed
 
 
 class GreedyThresholdStrategy(RebalanceStrategy):
