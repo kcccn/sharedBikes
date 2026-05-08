@@ -7,6 +7,11 @@ Phase 2 integrates the Ledger-First economic system:
 - ``Ledger`` stores all financial entries (immutable, chunked)
 - ``DailyReport`` is generated at each day boundary
 - ``SimState.BANKRUPT`` terminates the simulation if losses exceed threshold
+
+Phase 3 adds rebalancing dispatch:
+- ``RebalanceStrategy.analyse()`` identifies starving/overflowing stations
+- ``RebalanceStrategy.apply_orders()`` executes dispatch orders against fleet
+- Dispatch costs and fees are posted to the ledger at regular intervals
 """
 
 from __future__ import annotations
@@ -53,6 +58,7 @@ class DailyReport:
     profit_today: float
     cumulative_balance: float
     active_trips: int
+    dispatch_count_total: int = 0  # Phase 3: total bikes dispatched today
     alert: str = ""
 
 
@@ -76,6 +82,7 @@ class TickEvents:
     ledger_entries: list[LedgerEntry] = field(default_factory=list)
     weather: str = "CLEAR"
     station_inventory: dict[str, int] = field(default_factory=dict)
+    dispatch_movements: list[tuple[str, str, int]] = field(default_factory=list)  # Phase 3
 
     @property
     def revenue(self) -> float:
@@ -104,6 +111,9 @@ class SimulationEngine:
     cost_engine: CostEngine | None = None
     trip_executor: TripExecutor | None = None
     bankruptcy_threshold: float = -5000.0  # balance below this → BANKRUPT
+
+    # Phase 3: rebalancing
+    rebalance_interval: int = 60  # ticks between rebalance runs (≈ 1 sim-hour)
 
     state: SimState = SimState.STOPPED
     tick: int = 0
@@ -209,10 +219,11 @@ class SimulationEngine:
         3. TripExecutor: assign bikes + complete trips
         4. CostEngine: compute fixed/variable costs
         5. PricingEngine: compute revenue for completed trips
-        6. Ledger.append(all entries)
-        7. Check bankruptcy condition
-        8. Generate DailyReport at day boundary
-        9. Return TickEvents
+        6. (Phase 3) Rebalance: analyse + execute dispatch orders
+        7. Ledger.append(all entries)
+        8. Check bankruptcy condition
+        9. Generate DailyReport at day boundary
+        10. Return TickEvents
         """
         self.tick += 1
         self.environment.tick()
@@ -270,20 +281,46 @@ class SimulationEngine:
             )
             ledger_entries.append(entry)
 
-        # ── 5. Append to ledger ──────────────────────────────────
+        # ── 5. (Phase 3) Rebalance — every rebalance_interval ticks ──
+        dispatch_movements: list[tuple[str, str, int]] = []
+        if self.tick % self.rebalance_interval == 0 and self.city.stations:
+            # Build station inventory/capacity snapshots
+            station_inv: dict[str, int] = {}
+            station_cap: dict[str, int] = {}
+            for sid, station in self.city.stations.items():
+                station_inv[sid] = len(self.fleet.bikes_at_station(sid))
+                station_cap[sid] = station.capacity
+
+            # Analyse and execute
+            report = self.strategy.analyse(station_inv, station_cap)
+            if report.suggested_orders:
+                dispatch_movements = self.strategy.apply_orders(
+                    report.suggested_orders,
+                    self.fleet,
+                )
+
+            # Post dispatch cost/fee entries to ledger
+            if dispatch_movements and self.cost_engine is not None:
+                dispatch_entries = self.cost_engine.dispatch_entries(
+                    tick=self.tick,
+                    movements=dispatch_movements,
+                )
+                ledger_entries.extend(dispatch_entries)
+
+        # ── 6. Append to ledger ──────────────────────────────────
         if ledger_entries:
             self._ledger = self._ledger.append(ledger_entries)  # type: ignore[union-attr]
 
-        # ── 6. Check bankruptcy ──────────────────────────────────
+        # ── 7. Check bankruptcy ──────────────────────────────────
         if self.balance < self.bankruptcy_threshold:
             self.state = SimState.BANKRUPT
 
-        # ── 7. Snapshot station inventory ────────────────────────
+        # ── 8. Snapshot station inventory ────────────────────────
         station_inventory: dict[str, int] = {}
         for sid in self.city.stations:
             station_inventory[sid] = len(self.fleet.bikes_at_station(sid))
 
-        # ── 8. Generate DailyReport at day boundary ──────────────
+        # ── 9. Generate DailyReport at day boundary ──────────────
         report: DailyReport | None = None
         if tick_in_day == 0 and self.tick > 0:
             day = self.day_number
@@ -302,6 +339,13 @@ class SimulationEngine:
             today_revenue = self.ledger.revenue_total(tick_from, tick_to)  # type: ignore[union-attr]
             today_costs = self.ledger.cost_total(tick_from, tick_to)  # type: ignore[union-attr]
 
+            # Count dispatch movements today
+            dispatch_total = sum(
+                len(te.dispatch_movements)
+                for te in self._events_history
+                if tick_from <= te.tick <= tick_to
+            )
+
             report = DailyReport(
                 day=day,
                 final_tick=self.tick,
@@ -310,11 +354,12 @@ class SimulationEngine:
                 profit_today=today_revenue - today_costs,
                 cumulative_balance=self.balance,
                 active_trips=executor.active_trip_count if executor else 0,
+                dispatch_count_total=dispatch_total,
                 alert=alert,
             )
             self._daily_reports.append(report)
 
-        # ── 9. Return TickEvents ─────────────────────────────────
+        # ── 10. Return TickEvents ────────────────────────────────
         events = TickEvents(
             tick=self.tick,
             time_of_day=self.time_of_day(),
@@ -322,6 +367,7 @@ class SimulationEngine:
             ledger_entries=ledger_entries,
             weather=self.environment.condition.name,
             station_inventory=station_inventory,
+            dispatch_movements=dispatch_movements,
         )
 
         return events
@@ -339,7 +385,11 @@ class SimulationEngine:
         return self.tick // self.ticks_per_day
 
     def rebalance(self) -> None:
-        """Run the rebalance strategy and produce dispatch orders."""
+        """Run the rebalance strategy and produce dispatch orders.
+
+        Deprecated in Phase 3 — rebalancing is now integrated into ``_tick()``.
+        Kept for backward compatibility.
+        """
         station_inv: dict[str, int] = {}
         station_cap: dict[str, int] = {}
         for sid, station in self.city.stations.items():
@@ -347,5 +397,4 @@ class SimulationEngine:
             station_cap[sid] = station.capacity
 
         report = self.strategy.analyse(station_inv, station_cap)
-        # TODO(phase-3): execute orders against a dispatch queue
         _ = report  # placeholder
