@@ -52,7 +52,7 @@
 - 状态机：STOPPED → RUNNING → PAUSED
 - `advance(steps)` — 推进 N 个 tick
 - `time_of_day()` — 格式化模拟时间
-- `rebalance()` — 周期性调度
+- 每 `rebalance_interval` ticks 自动执行调度（集成在 `_tick()` 管线内）
 
 ## API 端点
 
