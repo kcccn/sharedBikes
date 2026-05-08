@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.core.city import Station
 
@@ -16,6 +16,7 @@ class TripRequest:
     from_station: str
     to_station: str
     bike_id: str | None = None
+    distance_km: float = 0.0  # populated by TripExecutor on assignment
 
 
 class TripGenerator(ABC):
@@ -44,6 +45,11 @@ class DemandService(TripGenerator):
         return []
 
 
+# ── reference price for elasticity calculation ──────────────────
+
+_REFERENCE_PRICE_PER_30MIN = 1.5  # "标准" tier price
+
+
 class RuleBasedDemandService(TripGenerator):
     """Minimal viable trip generator — good enough for v0.2.
 
@@ -51,14 +57,26 @@ class RuleBasedDemandService(TripGenerator):
     - Peak hours (7-9am, 5-7pm): higher trip rate
     - Off-peak hours: lower trip rate
     - Random OD pairs across available stations
+
+    Supports **price elasticity**: higher prices reduce trip demand,
+    lower prices increase it. This makes pricing a meaningful trade-off
+    rather than a cosmetic choice.
     """
 
-    def __init__(self, base_rate: float = 0.02, peak_rate: float = 0.08) -> None:
+    def __init__(
+        self,
+        base_rate: float = 0.02,
+        peak_rate: float = 0.08,
+        price_elasticity: float = -0.3,
+        reference_price: float = _REFERENCE_PRICE_PER_30MIN,
+    ) -> None:
         self.base_rate = base_rate
         self.peak_rate = peak_rate
+        self.price_elasticity = price_elasticity
+        self.reference_price = reference_price
 
     def generate(
-        self, tick: int, stations: dict[str, Station]
+        self, tick: int, stations: dict[str, Station],
     ) -> list[TripRequest]:
         if not stations:
             return []
@@ -66,6 +84,7 @@ class RuleBasedDemandService(TripGenerator):
         hour = (tick % 1440) // 60
         is_peak = (7 <= hour <= 9) or (17 <= hour <= 19)
         rate = self.peak_rate if is_peak else self.base_rate
+        rate = max(0.0, rate)
 
         n_trips = max(1, int(len(stations) * rate * random.uniform(0.8, 1.2)))
 
@@ -77,3 +96,20 @@ class RuleBasedDemandService(TripGenerator):
             for f, t in zip(from_ids, to_ids)
             if f != t  # skip self-loops
         ]
+
+    def effective_rate(self, base_rate: float, current_price: float) -> float:
+        """Apply price elasticity to the base demand rate.
+
+        Formula:
+            effective_rate = base_rate × (1 + elasticity × (price / reference_price - 1))
+
+        With elasticity = -0.3:
+        - price = 1.0 (亲民): rate × (1 - 0.3 × (1.0/1.5 - 1)) = rate × 1.10  (+10%)
+        - price = 1.5 (标准): rate × (1 - 0.3 × (1.5/1.5 - 1)) = rate × 1.00  (baseline)
+        - price = 2.5 (高端): rate × (1 - 0.3 × (2.5/1.5 - 1)) = rate × 0.80  (-20%)
+        """
+        if self.reference_price <= 0 or self.price_elasticity == 0:
+            return base_rate
+        ratio = current_price / self.reference_price
+        elastic_factor = 1.0 + self.price_elasticity * (ratio - 1.0)
+        return base_rate * max(0.0, elastic_factor)
