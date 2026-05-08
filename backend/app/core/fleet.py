@@ -60,6 +60,21 @@ class Fleet:
     def bikes_at_station(self, station_id: str) -> list[Bike]:
         return [b for b in self.bikes.values() if b.station_id == station_id]
 
+    def relocate_bikes(self, from_station: str, to_station: str, count: int) -> int:
+        """Move *count* available bikes from *from_station* to *to_station*.
+
+        Returns the number of bikes actually moved (may be less than *count*
+        if there aren't enough available bikes at the source station).
+        """
+        moved = 0
+        for bike in self.bikes.values():
+            if bike.station_id == from_station and bike.status == BikeStatus.AVAILABLE:
+                bike.station_id = to_station
+                moved += 1
+                if moved >= count:
+                    break
+        return moved
+
     def snapshot(self) -> FleetSnapshot:
         """Return an immutable snapshot of the current fleet state."""
         return FleetSnapshot(

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.finance import CostCategory, LedgerEntry
+from app.core.finance import CostCategory, LedgerEntry, RevenueCategory
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,8 @@ class CostParams:
     maintenance_per_bike_per_day: float = 0.5
     lease_per_station_per_day: float = 10.0
     overhead_per_tick: float = 0.0
+    dispatch_cost_per_bike: float = 2.0  # cost to move one bike (labour + truck)
+    dispatch_fee_per_bike: float = 1.0   # service fee charged per dispatch
 
 
 DEFAULT_COST_PARAMS = CostParams()
@@ -82,4 +84,39 @@ class CostEngine:
                 description="per-tick overhead",
             ))
 
+        return entries
+
+    def dispatch_entries(
+        self,
+        tick: int,
+        movements: list[tuple[str, str, int]],
+    ) -> list[LedgerEntry]:
+        """Compute ledger entries for a batch of dispatch movements.
+
+        Args:
+            tick: Current simulation tick.
+            movements: List of (from_station, to_station, count) tuples.
+
+        Returns:
+            List of LedgerEntry — one cost entry per movement batch,
+            plus one fee entry (small revenue) per movement batch.
+        """
+        entries: list[LedgerEntry] = []
+        for idx, (from_station, to_station, count) in enumerate(movements):
+            cost = self._params.dispatch_cost_per_bike * count
+            entries.append(LedgerEntry(
+                tick=tick,
+                entry_id=f"cost-dispatch-{tick}-{idx}",
+                category=CostCategory.DISPATCH_COST,
+                amount=-round(cost, 2),
+                description=f"dispatch {count} bike(s) from {from_station} → {to_station} @ ¥{self._params.dispatch_cost_per_bike}/ea",
+            ))
+            fee = self._params.dispatch_fee_per_bike * count
+            entries.append(LedgerEntry(
+                tick=tick,
+                entry_id=f"rev-dispatch-fee-{tick}-{idx}",
+                category=RevenueCategory.DISPATCH_FEE,
+                amount=round(fee, 2),
+                description=f"dispatch fee {count} bike(s) {from_station} → {to_station} @ ¥{self._params.dispatch_fee_per_bike}/ea",
+            ))
         return entries
