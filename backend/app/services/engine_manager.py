@@ -41,6 +41,13 @@ class EngineManager:
         """Construct engine with all required dependencies."""
         city = self._map_service.load_city(city_name)
         fleet = self._build_starter_fleet()
+
+        # Distribute bikes round-robin across all city stations
+        station_ids = list(city.stations.keys())
+        if station_ids:
+            for i, bike in enumerate(fleet.bikes.values()):
+                bike.station_id = station_ids[i % len(station_ids)]
+
         environment = Environment()
         strategy = GreedyThresholdStrategy()
         trip_generator = RuleBasedDemandService()
@@ -54,17 +61,15 @@ class EngineManager:
 
     @staticmethod
     def _build_starter_fleet() -> Fleet:
-        """Seed the fleet with starter bikes distributed across stations.
+        """Seed the fleet with starter bikes.
 
-        Called once during engine initialisation. Subsequent calls return
-        a new fleet — the engine owns its mutable fleet after init.
+        The caller (_init_engine) is responsible for distributing these
+        bikes across city stations after this method returns.
         """
         import random
 
         random.seed(42)
         fleet = Fleet()
-        # Bikes are added by _init_engine once city is loaded;
-        # this is a fallback / minimal fleet for edge cases.
         for i in range(50):
             fleet.add_bike(
                 Bike(bike_id=f"bike_{i:04d}", station_id=None)
@@ -92,9 +97,18 @@ class EngineManager:
         return self.get_status()
 
     def advance(self, steps: int = 1) -> SimStatusOut:
-        """Advance by *steps* ticks. Auto-starts if needed."""
-        if self.engine.state not in (SimState.RUNNING, SimState.PAUSED, SimState.BANKRUPT):
+        """Advance by *steps* ticks. Auto-starts if needed.
+
+        Handles all three non-terminal states:
+        - PAUSED  → resume (start) then advance
+        - STOPPED → start then advance
+        - BANKRUPT → advance (engine allows it, returns last snapshot)
+        """
+        if self.engine.state is SimState.PAUSED:
+            self.engine.start()  # resume from pause
+        elif self.engine.state is SimState.STOPPED:
             self.engine.start()
+        # RUNNING and BANKRUPT fall through directly
         self.engine.advance(steps)
         return self.get_status()
 
