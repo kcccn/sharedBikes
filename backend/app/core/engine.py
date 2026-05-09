@@ -12,6 +12,11 @@ Phase 3 adds rebalancing dispatch:
 - ``RebalanceStrategy.analyse()`` identifies starving/overflowing stations
 - ``RebalanceStrategy.apply_orders()`` executes dispatch orders against fleet
 - Dispatch costs and fees are posted to the ledger at regular intervals
+
+Phase 4 adds event bus integration:
+- After each ``_tick()`` the engine publishes a ``"tick"`` event on ``EventBus``
+- WebSocket broadcaster, AchievementEngine, and other consumers subscribe
+  without coupling to the engine's internals
 """
 
 from __future__ import annotations
@@ -114,6 +119,9 @@ class SimulationEngine:
 
     # Phase 3: rebalancing
     rebalance_interval: int = 60  # ticks between rebalance runs (≈ 1 sim-hour)
+
+    # Phase 4: event bus (lazy-initialised singleton)
+    event_bus: object | None = None
 
     state: SimState = SimState.STOPPED
     tick: int = 0
@@ -223,7 +231,8 @@ class SimulationEngine:
         7. Ledger.append(all entries)
         8. Check bankruptcy condition
         9. Generate DailyReport at day boundary
-        10. Return TickEvents
+        10. Publish tick event on EventBus
+        11. Return TickEvents
         """
         self.tick += 1
         self.environment.tick()
@@ -359,7 +368,7 @@ class SimulationEngine:
             )
             self._daily_reports.append(report)
 
-        # ── 10. Return TickEvents ────────────────────────────────
+        # ── 10. Build TickEvents ─────────────────────────────────
         events = TickEvents(
             tick=self.tick,
             time_of_day=self.time_of_day(),
@@ -369,6 +378,10 @@ class SimulationEngine:
             station_inventory=station_inventory,
             dispatch_movements=dispatch_movements,
         )
+
+        # ── 11. Publish on event bus (Phase 4) ───────────────────
+        if self.event_bus is not None:
+            self.event_bus.publish("tick", events)
 
         return events
 
