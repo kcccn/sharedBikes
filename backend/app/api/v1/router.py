@@ -1,4 +1,8 @@
-"""API v1 router: simulation, city, fleet, and dashboard endpoints."""
+"""API v1 router: simulation, city, fleet, and dashboard endpoints.
+
+Phase 4 wiring: all simulation/*, /fleet, and /events endpoints now read
+from the live SimulationEngine via the EngineManager singleton.
+"""
 
 from fastapi import APIRouter, HTTPException
 
@@ -16,10 +20,12 @@ from app.models.schemas import (
     StationOut,
     ZoneOut,
 )
+from app.services.engine_manager import EngineManager
 from app.services.map_service import MapService
 
 api_router = APIRouter()
 _map_service = MapService()
+_engine_mgr = EngineManager()  # singleton
 
 
 def _get_city_data(city_name: str = "Beijing") -> CityOut:
@@ -103,61 +109,67 @@ async def get_stations():
 
 @api_router.get("/fleet", response_model=FleetOut)
 async def get_fleet():
-    """Return current fleet state (stub)."""
-    return FleetOut(total_bikes=0, active_rides=0, lost_bikes=0, bikes=[])
+    """Return current fleet state from the live engine."""
+    return _engine_mgr.get_fleet()
 
 
 @api_router.get("/fleet/bikes/{bike_id}", response_model=BikeOut)
 async def get_bike(bike_id: str):
-    """Return a single bike (stub)."""
-    raise HTTPException(status_code=404, detail="Bike not found")
+    """Return a single bike from the live engine."""
+    bike = _engine_mgr.get_bike(bike_id)
+    if bike is None:
+        raise HTTPException(status_code=404, detail="Bike not found")
+    return bike
 
 
 # ---- Simulation ----
 
 @api_router.post("/simulation/start", response_model=SimStatusOut)
 async def start_simulation(config: SimConfigIn | None = None):
-    """Start the simulation engine (stub)."""
-    _ = config
-    return SimStatusOut(tick=0, state="running", time_of_day="00:00")
+    """Start the simulation engine.
+
+    Accepts an optional ``SimConfigIn`` to override default parameters.
+    Idempotent — safe to call on an already-running engine.
+    """
+    _ = config  # TODO: apply config overrides after engine restart
+    return _engine_mgr.start()
 
 
 @api_router.post("/simulation/pause", response_model=SimStatusOut)
 async def pause_simulation():
-    """Pause the simulation (stub)."""
-    return SimStatusOut(tick=0, state="paused", time_of_day="00:00")
+    """Pause the simulation engine."""
+    return _engine_mgr.pause()
 
 
 @api_router.post("/simulation/advance", response_model=SimStatusOut)
 async def advance_simulation(steps: int = 1):
-    """Advance simulation by N ticks (stub)."""
-    _ = steps
-    return SimStatusOut(tick=1, state="running", time_of_day="00:01")
+    """Advance the simulation by *steps* ticks."""
+    return _engine_mgr.advance(steps)
 
 
 @api_router.get("/simulation/status", response_model=SimStatusOut)
 async def simulation_status():
-    """Return current simulation status (stub)."""
-    return SimStatusOut(tick=0, state="stopped", time_of_day="00:00")
+    """Return current simulation status from the live engine."""
+    return _engine_mgr.get_status()
 
 
 # ---- Events ----
 
 @api_router.get("/events", response_model=list[EventOut])
 async def get_events():
-    """Return active special events (stub)."""
-    return []
+    """Return active special events from the engine's environment."""
+    return _engine_mgr.get_events()
 
 
 # ---- Dashboard ----
 
 @api_router.get("/dashboard/heatmap", response_model=list[HeatmapCell])
 async def get_heatmap():
-    """Return real-time demand heatmap cells (stub)."""
+    """Return real-time demand heatmap cells (stub — Phase 5)."""
     return []
 
 
 @api_router.get("/dashboard/flows", response_model=list[FlowLine])
 async def get_flows():
-    """Return OD flow lines for visualization (stub)."""
+    """Return OD flow lines for visualization (stub — Phase 5)."""
     return []
