@@ -297,6 +297,7 @@ class SimulationEngine:
                 dispatch_movements = self.strategy.apply_orders(
                     report.suggested_orders,
                     self.fleet,
+                    valid_stations=set(self.city.stations.keys()),
                 )
 
             # Post dispatch cost/fee entries to ledger
