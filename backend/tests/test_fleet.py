@@ -1,5 +1,7 @@
 """Tests for fleet domain models."""
 
+import pytest
+
 from app.core.fleet import Bike, BikeStatus, Fleet, LatLng
 
 
@@ -54,3 +56,65 @@ def test_fleet_snapshot() -> None:
     assert snap.total_bikes == 2
     assert snap.total["AVAILABLE"] == 1
     assert snap.total["IN_USE"] == 1
+
+
+# ── relocate_bikes: validation ──────────────────────────────────
+
+
+def test_relocate_bikes_happy_path() -> None:
+    """Bikes are moved when both stations are valid."""
+    fleet = Fleet()
+    fleet.add_bike(Bike(bike_id="b1", station_id="s1", status=BikeStatus.AVAILABLE))
+    fleet.add_bike(Bike(bike_id="b2", station_id="s1", status=BikeStatus.AVAILABLE))
+
+    moved = fleet.relocate_bikes("s1", "s2", 1, valid_stations={"s1", "s2"})
+    assert moved == 1
+    assert fleet.get_bike("b1").station_id == "s2"  # type: ignore[union-attr]
+    assert fleet.get_bike("b2").station_id == "s1"  # type: ignore[union-attr]
+
+
+def test_relocate_bikes_raises_on_invalid_to_station() -> None:
+    """ValueError is raised when to_station is not in valid_stations."""
+    fleet = Fleet()
+    fleet.add_bike(Bike(bike_id="b1", station_id="s1", status=BikeStatus.AVAILABLE))
+
+    with pytest.raises(ValueError, match="Unknown to_station.*phantom"):
+        fleet.relocate_bikes("s1", "phantom", 1, valid_stations={"s1", "s2"})
+
+
+def test_relocate_bikes_raises_on_invalid_from_station() -> None:
+    """ValueError is raised when from_station is not in valid_stations."""
+    fleet = Fleet()
+    fleet.add_bike(Bike(bike_id="b1", station_id="s1", status=BikeStatus.AVAILABLE))
+
+    with pytest.raises(ValueError, match="Unknown from_station.*phantom"):
+        fleet.relocate_bikes("phantom", "s1", 1, valid_stations={"s1", "s2"})
+
+
+def test_relocate_bikes_raises_on_both_invalid() -> None:
+    """from_station is validated first when both stations are invalid."""
+    fleet = Fleet()
+    with pytest.raises(ValueError, match="Unknown from_station.*ghost"):
+        fleet.relocate_bikes("ghost", "phantom", 1, valid_stations={"s1"})
+
+
+def test_relocate_bikes_no_validation_when_none_passed() -> None:
+    """Backward compat: no validation when valid_stations is None."""
+    fleet = Fleet()
+    fleet.add_bike(Bike(bike_id="b1", station_id="s1", status=BikeStatus.AVAILABLE))
+
+    moved = fleet.relocate_bikes("s1", "nonsense", 1, valid_stations=None)
+    assert moved == 1  # silently moves to phantom (backward compat)
+    assert fleet.get_bike("b1").station_id == "nonsense"  # type: ignore[union-attr]
+
+
+def test_relocate_bikes_skips_in_use_bikes() -> None:
+    """Only AVAILABLE bikes are relocated."""
+    fleet = Fleet()
+    fleet.add_bike(Bike(bike_id="b1", station_id="s1", status=BikeStatus.AVAILABLE))
+    fleet.add_bike(Bike(bike_id="b2", station_id="s1", status=BikeStatus.IN_USE))
+
+    moved = fleet.relocate_bikes("s1", "s2", 5, valid_stations={"s1", "s2"})
+    assert moved == 1
+    assert fleet.get_bike("b1").station_id == "s2"  # type: ignore[union-attr]
+    assert fleet.get_bike("b2").station_id == "s1"  # type: ignore[union-attr]
