@@ -8,6 +8,7 @@ provides thin wrappers around the engine's lifecycle and query methods.
 from __future__ import annotations
 
 from app.core.engine import SimulationEngine, SimState
+from app.core.event_bus import EventBus
 from app.core.fleet import Bike, Fleet
 from app.core.scheduler import GreedyThresholdStrategy
 from app.core.weather import Environment
@@ -38,7 +39,11 @@ class EngineManager:
         return self._engine
 
     def _init_engine(self, city_name: str = "Beijing") -> None:
-        """Construct engine with all required dependencies."""
+        """Construct engine with all required dependencies.
+
+        Phase 4: wires the global EventBus singleton so tick events are
+        published for WebSocket broadcaster, AchievementEngine, etc.
+        """
         city = self._map_service.load_city(city_name)
         fleet = self._build_starter_fleet()
 
@@ -57,6 +62,7 @@ class EngineManager:
             environment=environment,
             strategy=strategy,
             trip_generator=trip_generator,
+            event_bus=EventBus(),
         )
 
     @staticmethod
