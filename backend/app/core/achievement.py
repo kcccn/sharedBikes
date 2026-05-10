@@ -129,12 +129,16 @@ class TripCountGe:
 
 @dataclass(frozen=True)
 class RevenueGe:
-    """Cumulative revenue >= amount."""
+    """Cumulative gross revenue >= amount.
+
+    Uses ``cumulative_revenue`` (sum of all positive ledger entries),
+    not ``cumulative_balance`` which includes costs.
+    """
 
     amount: float
 
     def __call__(self, ctx: EvaluationContext) -> bool:
-        return ctx.cumulative_balance >= self.amount  # simplified: balance ≈ net revenue
+        return ctx.cumulative_revenue >= self.amount
 
 
 @dataclass(frozen=True)
