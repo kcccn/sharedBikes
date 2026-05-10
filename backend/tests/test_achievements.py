@@ -77,26 +77,29 @@ def period_end_engine():
     return AchievementEngine(achievements=[ach])
 
 
+class SimpleTickEvents:
+    """Minimal stand-in for TickEvents that supports settable attributes.
+
+    The real TickEvents.revenue is a read-only property derived from
+    ledger_entries. Our achievement engine uses ``getattr(events, ...)``
+    so any object with the right attributes works.
+    """
+    def __init__(self, tick, time_of_day="00:00", revenue=0, profit=0, ledger_entries=None):
+        self.tick = tick
+        self.time_of_day = time_of_day
+        self.revenue = revenue
+        self.profit = profit
+        self.ledger_entries = ledger_entries or []
+        self._daily_report = None
+
+
 def make_tick_events(tick, revenue=0, profit=0):
-    """Helper to build a TickEvents-like object."""
-    class FakeEntry:
-        def __init__(self, amount):
-            self.amount = amount
-
-    entries = []
-    if revenue:
-        entries.append(FakeEntry(revenue))
-    if profit:
-        entries.append(FakeEntry(profit))
-
-    ev = TickEvents(tick=tick, time_of_day="00:00", ledger_entries=entries)
-    ev.revenue = revenue
-    ev.profit = profit
-    return ev
+    """Helper to build a tick event object with settable attributes."""
+    return SimpleTickEvents(tick=tick, revenue=revenue, profit=profit)
 
 
 def make_day_boundary(tick, report=None):
-    """Helper to build a TickEvents at day boundary (tick % 1440 == 0)."""
+    """Helper to build a tick event at day boundary (tick % 1440 == 0)."""
     ev = make_tick_events(tick)
     ev._daily_report = report
     return ev
