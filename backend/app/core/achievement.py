@@ -104,11 +104,14 @@ class EvaluationContext:
     trip_count: int  # cumulative completed trips
     completed_trips: list[Any]  # trips completed this tick
     revenue_today: float
-    profit_today: float
-    cumulative_balance: float
+    profit_today: float  # running accumulated profit for the current in-progress day
+    cumulative_balance: float  # net balance (revenue - costs)
+    cumulative_revenue: float = 0.0  # gross cumulative revenue (positive entries only)
     station_inventory: dict[str, int]
+    station_capacity: dict[str, int] = field(default_factory=dict)
     daily_profit_history: list[float]  # profit for each completed day
     dispatch_movements: list[tuple[str, str, int]]
+    consecutive_trip_count: int = 0  # trips on consecutive non-idle ticks
 
 
 # ── Condition primitives ────────────────────────────────────────
