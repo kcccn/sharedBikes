@@ -48,6 +48,7 @@
       /** @type {Map<number, L.Marker>} */
       const markers = new Map();
       let stationNames = {};
+      const stationCapacities = new Map();
 
       function getIcon(bikes, capacity) {
         const ratio = capacity > 0 ? bikes / capacity : 0;
