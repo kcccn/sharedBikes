@@ -29,3 +29,8 @@ async def health() -> dict[str, str]:
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/api/v1")
+
+# ── Serve static frontend ────────────────────────────────────────
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
