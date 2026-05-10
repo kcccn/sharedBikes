@@ -134,12 +134,17 @@ class TestStreak:
 class TestConsecutiveTrips:
     def test_below(self) -> None:
         c = ConsecutiveTrips(5)
-        ctx = _make_ctx(trip_count=3)
+        ctx = _make_ctx(consecutive_trip_count=3)
         assert not c(ctx)
 
     def test_at_threshold(self) -> None:
         c = ConsecutiveTrips(3)
-        ctx = _make_ctx(trip_count=3)
+        ctx = _make_ctx(consecutive_trip_count=3)
+        assert c(ctx)
+
+    def test_above_threshold(self) -> None:
+        c = ConsecutiveTrips(3)
+        ctx = _make_ctx(consecutive_trip_count=5)
         assert c(ctx)
 
 
