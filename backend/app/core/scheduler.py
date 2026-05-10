@@ -48,12 +48,15 @@ class RebalanceStrategy(ABC):
         self,
         orders: list[DispatchOrder],
         fleet: Fleet,
+        valid_stations: set[str] | None = None,
     ) -> list[tuple[str, str, int]]:
         """Execute dispatch orders against the fleet.
 
         Args:
             orders: List of dispatch orders to execute.
             fleet: The fleet to execute orders against.
+            valid_stations: Optional set of valid station IDs. Passed through
+                to ``Fleet.relocate_bikes()`` for validation.
 
         Returns:
             List of (from_station, to_station, actual_count) tuples
@@ -61,7 +64,12 @@ class RebalanceStrategy(ABC):
         """
         executed: list[tuple[str, str, int]] = []
         for order in orders:
-            moved = fleet.relocate_bikes(order.from_station, order.to_station, order.count)
+            moved = fleet.relocate_bikes(
+                order.from_station,
+                order.to_station,
+                order.count,
+                valid_stations=valid_stations,
+            )
             if moved > 0:
                 executed.append((order.from_station, order.to_station, moved))
         return executed

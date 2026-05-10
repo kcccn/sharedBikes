@@ -60,12 +60,43 @@ class Fleet:
     def bikes_at_station(self, station_id: str) -> list[Bike]:
         return [b for b in self.bikes.values() if b.station_id == station_id]
 
-    def relocate_bikes(self, from_station: str, to_station: str, count: int) -> int:
+    def relocate_bikes(
+        self,
+        from_station: str,
+        to_station: str,
+        count: int,
+        valid_stations: set[str] | None = None,
+    ) -> int:
         """Move *count* available bikes from *from_station* to *to_station*.
 
-        Returns the number of bikes actually moved (may be less than *count*
-        if there aren't enough available bikes at the source station).
+        Args:
+            from_station: Source station ID.
+            to_station: Destination station ID.
+            count: Maximum number of bikes to move.
+            valid_stations: Optional set of valid station IDs. When provided,
+                both *from_station* and *to_station* are validated against it,
+                and a ``ValueError`` is raised if either is not found.
+
+        Returns:
+            The number of bikes actually moved (may be less than *count*
+            if there aren't enough available bikes at the source station).
+
+        Raises:
+            ValueError: If *valid_stations* is provided and *from_station* or
+                *to_station* is not in the set.
         """
+        if valid_stations is not None:
+            if from_station not in valid_stations:
+                raise ValueError(
+                    f"Unknown from_station: '{from_station}'. "
+                    f"Valid stations: {sorted(valid_stations)}"
+                )
+            if to_station not in valid_stations:
+                raise ValueError(
+                    f"Unknown to_station: '{to_station}'. "
+                    f"Valid stations: {sorted(valid_stations)}"
+                )
+
         moved = 0
         for bike in self.bikes.values():
             if bike.station_id == from_station and bike.status == BikeStatus.AVAILABLE:
