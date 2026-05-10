@@ -357,14 +357,18 @@ class TestAchievementEngine:
         self.engine.register(*BUILTIN_ACHIEVEMENTS)
         self.engine._state.counters["trip_count"] = 10
         self.engine._state.counters["cumulative_balance"] = 15000.0
+        self.engine._state.counters["cumulative_revenue"] = 15000.0
         self.engine._state.daily_profit_history = [1.0] * 7
-        self.engine._state.counters["consecutive_trips"] = 5
+        self.engine._state.consecutive_trip_counter = 5
 
         event = _make_tick_event(tick=1440)
         self.engine._on_tick(event)
 
-        # first_trip and revenue_10k should unlock (trip_count>=1, balance>=10000)
+        # first_trip: trip_count>=1
         assert "first_trip" in self.engine._state.unlocked
+        # revenue_10k: cumulative_revenue>=10000
         assert "revenue_10k" in self.engine._state.unlocked
-        # profit_streak_7 should also unlock since history has 7 profitable days
+        # profit_streak_7: 7 profitable days in history
         assert "profit_streak_7" in self.engine._state.unlocked
+        # perfect_dispatch: 5 consecutive trips
+        assert "perfect_dispatch" in self.engine._state.unlocked
