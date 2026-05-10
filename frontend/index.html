@@ -44,6 +44,22 @@
         maxZoom: 18,
       }).addTo(map);
 
+      // ── Newbie guide (auto-dismiss) ──────────────────────────
+      const guide = document.createElement('div');
+      guide.id = 'newbie-guide';
+      guide.innerHTML = '💡 <b>提示：</b>点击地图上的彩色圆圈可查看站点可用车辆数';
+      Object.assign(guide.style, {
+        position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+        zIndex: 1000, background: 'rgba(0,0,0,0.75)', color: '#fff',
+        padding: '12px 22px', borderRadius: '24px',
+        font: '15px/1.5 sans-serif', textAlign: 'center',
+        transition: 'opacity 0.8s ease', cursor: 'default',
+        pointerEvents: 'none', whiteSpace: 'nowrap',
+      });
+      document.body.appendChild(guide);
+      setTimeout(() => { guide.style.opacity = '0'; }, 8000);
+      setTimeout(() => { guide.remove(); }, 8800);
+
       // ── Station markers ───────────────────────────────────────
       /** @type {Map<number, L.Marker>} */
       const markers = new Map();
