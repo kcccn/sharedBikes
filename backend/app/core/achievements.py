@@ -327,8 +327,14 @@ def cumulative_profit_evaluator(ctx: dict[str, Any]) -> bool:
 
 
 def profitable_day_evaluator(ctx: dict[str, Any]) -> bool:
-    """Evaluator: the day's profit was positive."""
-    # For streak evaluators, the caller sets day_condition_met
+    """Evaluator: the day's profit was positive.
+
+    Looks for ``profit`` in context (set from the tick event). Falls
+    back to ``day_condition_met`` for backwards compatibility.
+    """
+    profit = ctx.get("profit", None)
+    if profit is not None:
+        return profit > 0
     return ctx.get("day_condition_met", False)
 
 
