@@ -134,24 +134,7 @@
               const sid = Number(stationIdStr);
               const marker = markers.get(sid);
               if (!marker) continue;
-              // capacity is stored on the bootstrap marker's popup
-              // We'll find it from the markers map
-              const cap = marker.getPopup()?.getContent()?.match(/(\d+)\s*辆/);
-              // parse capacity from the popup text
-              // Actually, let's store capacities in a map
-            }
-            // Re-process with stored capacities
-            for (const [stationIdStr, bikes] of Object.entries(inv)) {
-              const sid = Number(stationIdStr);
-              const marker = markers.get(sid);
-              if (!marker) continue;
-              // Estimate capacity from popup text or use a fallback
-              const capEl = marker.getPopup()?.getContent();
-              let capacity = 20; // fallback
-              if (typeof capEl === 'string') {
-                const m = capEl.match(/\/(\d+)\s*辆/);
-                if (m) capacity = parseInt(m[1], 10);
-              }
+              const capacity = stationCapacities.get(sid) ?? 20;
               updateMarker(sid, bikes, capacity);
             }
             statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
