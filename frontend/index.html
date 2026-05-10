@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityBike Sim — 实时地图</title>
+  <!-- Leaflet from CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    #map { height: 100%; width: 100%; }
+    #status-bar {
+      position: fixed; top: 10px; right: 10px; z-index: 1000;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 6px 14px; border-radius: 20px;
+      font: 14px/1.5 sans-serif; pointer-events: none;
+    }
+    #status-bar.connected { background: rgba(40,167,69,0.85); }
+    #status-bar.disconnected { background: rgba(220,53,69,0.85); }
+    .leaflet-popup-content { font: 14px/1.6 sans-serif; min-width: 140px; }
+    .leaflet-popup-content h3 { margin: 0 0 4px; font-size: 16px; }
+    .leaflet-popup-content .bikes { font-size: 18px; font-weight: bold; color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="status-bar" class="disconnected">⏳ 连接中…</div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const WS_URL = ((loc) => {
+        const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${proto}//${loc.host}/api/v1/ws`;
+      })(window.location);
+
+      // ── Map initialisation ────────────────────────────────────
+      const map = L.map('map').setView([30.57, 104.07], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a>',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // ── Station markers ───────────────────────────────────────
+      /** @type {Map<number, L.Marker>} */
+      const markers = new Map();
+      let stationNames = {};
+
+      function getIcon(bikes, capacity) {
+        const ratio = capacity > 0 ? bikes / capacity : 0;
+        let color;
+        if (ratio === 0) color = '#dc3545';
+        else if (ratio < 0.3) color = '#fd7e14';
+        else if (ratio < 0.7) color = '#ffc107';
+        else color = '#28a745';
+
+        return L.divIcon({
+          className: '',
+          html: `<div style="
+            background:${color}; color:#fff; width:28px; height:28px;
+            border-radius:50%; display:flex; align-items:center;
+            justify-content:center; font:bold 13px/1 sans-serif;
+            border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.3);
+          ">${bikes}</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+          popupAnchor: [0, -16],
+        });
+      }
+
+      function buildPopupContent(stationId, bikes, capacity) {
+        const name = stationNames[stationId] || `车站 #${stationId}`;
+        return `
+          <h3>${name}</h3>
+          <p>可用车辆: <span class="bikes">${bikes}</span> / ${capacity} 辆</p>
+        `;
+      }
+
+      function updateMarker(stationId, bikes, capacity) {
+        const marker = markers.get(stationId);
+        if (!marker) return;
+        marker.setIcon(getIcon(bikes, capacity));
+        marker.setPopupContent(buildPopupContent(stationId, bikes, capacity));
+      }
+
+      // ── WebSocket ─────────────────────────────────────────────
+      const statusBar = document.getElementById('status-bar');
+      let ws;
+
+      function connect() {
+        statusBar.textContent = '⏳ 连接中…';
+        statusBar.className = 'disconnected';
+
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+          statusBar.textContent = '🟢 已连接 — 实时更新中';
+          statusBar.className = 'connected';
+        };
+
+        ws.onmessage = (event) => {
+          let msg;
+          try {
+            msg = JSON.parse(event.data);
+          } catch {
+            return;
+          }
+
+          if (msg.type === 'bootstrap') {
+            // ── One-shot: create all station markers ──
+            for (const st of msg.stations) {
+              stationNames[st.station_id] = st.name;
+
+              if (markers.has(st.station_id)) continue;
+
+              const marker = L.marker([st.lat, st.lng], {
+                icon: getIcon(0, st.capacity),
+              })
+                .addTo(map)
+                .bindPopup(buildPopupContent(st.station_id, 0, st.capacity));
+
+              markers.set(st.station_id, marker);
+            }
+            statusBar.textContent = `🟢 已连接 — ${markers.size} 个站点`;
+          } else if (msg.type === 'tick') {
+            // ── Tick: update marker icons & popups ──
+            const inv = msg.station_inventory || {};
+            for (const [stationIdStr, bikes] of Object.entries(inv)) {
+              const sid = Number(stationIdStr);
+              const marker = markers.get(sid);
+              if (!marker) continue;
+              // capacity is stored on the bootstrap marker's popup
+              // We'll find it from the markers map
+              const cap = marker.getPopup()?.getContent()?.match(/(\d+)\s*辆/);
+              // parse capacity from the popup text
+              // Actually, let's store capacities in a map
+            }
+            // Re-process with stored capacities
+            for (const [stationIdStr, bikes] of Object.entries(inv)) {
+              const sid = Number(stationIdStr);
+              const marker = markers.get(sid);
+              if (!marker) continue;
+              // Estimate capacity from popup text or use a fallback
+              const capEl = marker.getPopup()?.getContent();
+              let capacity = 20; // fallback
+              if (typeof capEl === 'string') {
+                const m = capEl.match(/\/(\d+)\s*辆/);
+                if (m) capacity = parseInt(m[1], 10);
+              }
+              updateMarker(sid, bikes, capacity);
+            }
+            statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
+          }
+        };
+
+        ws.onclose = () => {
+          statusBar.textContent = '🔴 已断开 — 5 秒后重连';
+          statusBar.className = 'disconnected';
+          setTimeout(connect, 5000);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      }
+
+      // ── Start ─────────────────────────────────────────────────
+      connect();
+    })();
+  </script>
+</body>
+</html>
