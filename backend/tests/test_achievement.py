@@ -151,20 +151,28 @@ class TestConsecutiveTrips:
 class TestStationUtilizationGe:
     def test_station_empty(self) -> None:
         c = StationUtilizationGe("S1", 0.5)
-        ctx = _make_ctx()
+        ctx = _make_ctx(station_inventory={"S1": 0}, station_capacity={"S1": 10})
         assert not c(ctx)
 
-    def test_station_has_bikes(self) -> None:
+    def test_below_ratio(self) -> None:
         c = StationUtilizationGe("S1", 0.5)
-        ctx = EvaluationContext(
-            tick=1, tick_in_day=1, day=0,
-            trip_count=0, completed_trips=[],
-            revenue_today=0.0, profit_today=0.0,
-            cumulative_balance=0.0,
-            station_inventory={"S1": 5},
-            daily_profit_history=[],
-            dispatch_movements=[],
-        )
+        ctx = _make_ctx(station_inventory={"S1": 2}, station_capacity={"S1": 10})
+        assert not c(ctx)
+
+    def test_at_ratio(self) -> None:
+        c = StationUtilizationGe("S1", 0.5)
+        ctx = _make_ctx(station_inventory={"S1": 5}, station_capacity={"S1": 10})
+        assert c(ctx)
+
+    def test_above_ratio(self) -> None:
+        c = StationUtilizationGe("S1", 0.5)
+        ctx = _make_ctx(station_inventory={"S1": 8}, station_capacity={"S1": 10})
+        assert c(ctx)
+
+    def test_fallback_no_capacity(self) -> None:
+        """Without capacity data, falls back to inv > 0."""
+        c = StationUtilizationGe("S1", 0.5)
+        ctx = _make_ctx(station_inventory={"S1": 1})
         assert c(ctx)
 
 
