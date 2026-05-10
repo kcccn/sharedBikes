@@ -379,9 +379,12 @@ class AchievementEngine:
                 revenue_today=0.0,
                 profit_today=0.0,
                 cumulative_balance=0.0,
+                cumulative_revenue=0.0,
                 station_inventory={},
+                station_capacity={},
                 daily_profit_history=[],
                 dispatch_movements=[],
+                consecutive_trip_count=0,
             )
 
         tick = event.tick
@@ -395,24 +398,35 @@ class AchievementEngine:
             and e.category == RevenueCategory.TRIP_INCOME
         ]
 
-        # Revenue / profit today
-        revenue_today = sum(
+        # Revenue / profit from this tick's entries
+        revenue_this_tick = sum(
             e.amount for e in event.ledger_entries
             if e.amount > 0
         )
-        cost_today = abs(sum(
+        cost_this_tick = abs(sum(
             e.amount for e in event.ledger_entries
             if e.amount < 0
         ))
-        profit_today = revenue_today - cost_today
+        profit_this_tick = revenue_this_tick - cost_this_tick
 
-        cumulative_balance = float(self._state.counters.get("cumulative_balance", 0.0)) + (revenue_today - cost_today)
+        # Cumulative gross revenue (positive entries only, != net balance)
+        cumulative_revenue = float(self._state.counters.get("cumulative_revenue", 0.0)) + revenue_this_tick
+        # Cumulative net balance (includes costs)
+        cumulative_balance = float(self._state.counters.get("cumulative_balance", 0.0)) + profit_this_tick
+
         trip_count = int(self._state.counters.get("trip_count", 0)) + len(completed_trips)
 
-        # Day boundary: record daily profit
+        # Day boundary: flush previous day's accumulated profit, then reset
         if tick_in_day == 0 and day > self._state.last_day_completed and tick > 0:
-            self._state.daily_profit_history.append(profit_today)
+            self._state.daily_profit_history.append(self._state.current_day_profit)
             self._state.last_day_completed = day
+            self._state.current_day_profit = 0.0
+
+        # Accumulate profit for the current (in-progress) day
+        self._state.current_day_profit += profit_this_tick
+
+        # Update cumulative counters in state for next tick
+        self._state.counters["cumulative_revenue"] = cumulative_revenue
 
         return EvaluationContext(
             tick=tick,
@@ -420,12 +434,15 @@ class AchievementEngine:
             day=day,
             trip_count=trip_count,
             completed_trips=completed_trips,
-            revenue_today=revenue_today,
-            profit_today=profit_today,
+            revenue_today=revenue_this_tick,
+            profit_today=self._state.current_day_profit,
             cumulative_balance=cumulative_balance,
+            cumulative_revenue=cumulative_revenue,
             station_inventory=event.station_inventory,
+            station_capacity={},  # not yet available from TickEvents
             daily_profit_history=list(self._state.daily_profit_history),
             dispatch_movements=event.dispatch_movements,
+            consecutive_trip_count=self._state.consecutive_trip_counter,
         )
 
     # ── streak tracking ─────────────────────────────────────────
