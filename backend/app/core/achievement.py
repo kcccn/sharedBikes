@@ -217,15 +217,21 @@ class ConsecutiveTrips:
 
 @dataclass(frozen=True)
 class StationUtilizationGe:
-    """Station inventory / capacity ratio >= *ratio*."""
+    """Station inventory / capacity ratio >= *ratio*.
+
+    Requires ``ctx.station_capacity`` to be populated for the target station.
+    Falls back to ``inv > 0`` when capacity is unavailable.
+    """
 
     station_id: str
     ratio: float
 
     def __call__(self, ctx: EvaluationContext) -> bool:
         inv = ctx.station_inventory.get(self.station_id, 0)
-        # Capacity is not directly in context — this is a placeholder
-        # that checks inventory > 0 as a simplified proxy.
+        cap = ctx.station_capacity.get(self.station_id, 0)
+        if cap > 0:
+            return inv / cap >= self.ratio
+        # Fallback when capacity is not yet available from TickEvents
         return inv > 0
 
 
