@@ -256,8 +256,9 @@ class TestBuiltinAchievements:
 
     def test_perfect_dispatch_condition(self) -> None:
         ach = next(a for a in BUILTIN_ACHIEVEMENTS if a.id == "perfect_dispatch")
-        assert not ach.condition(_make_ctx(trip_count=3))
-        assert ach.condition(_make_ctx(trip_count=5))
+        assert not ach.condition(_make_ctx(consecutive_trip_count=3))
+        assert ach.condition(_make_ctx(consecutive_trip_count=5))
+        assert ach.condition(_make_ctx(consecutive_trip_count=10))
 
     def test_all_builtin_have_rewards(self) -> None:
         for ach in BUILTIN_ACHIEVEMENTS:
