@@ -15,6 +15,10 @@ on:
         description: 'Issue/PR number to trigger bots on'
         required: false
         type: string
+      bot_identity:
+        description: 'Target bot identity (architect/reviewer/pm/explorer/coder); random if empty'
+        required: false
+        type: string
   schedule:
     - cron: "*/10 * * * *"
 
@@ -28,3 +32,5 @@ jobs:
   ryobot:
     uses: kcccn/ryobot/.github/workflows/ryobot.yml@main
     secrets: inherit
+    with:
+      bot_identity: ${{ inputs.bot_identity || '' }}
