@@ -279,6 +279,7 @@ class AchievementState:
     daily_profit_history: list[float] = field(default_factory=list)
     last_day_completed: int = -1
     consecutive_trip_counter: int = 0
+    current_day_profit: float = 0.0  # running profit accumulated so far today
 
 
 # ── the engine ──────────────────────────────────────────────────
