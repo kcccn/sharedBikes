@@ -243,8 +243,8 @@ class TestBuiltinAchievements:
 
     def test_revenue_10k_condition(self) -> None:
         ach = next(a for a in BUILTIN_ACHIEVEMENTS if a.id == "revenue_10k")
-        assert not ach.condition(_make_ctx(cumulative_balance=5000.0))
-        assert ach.condition(_make_ctx(cumulative_balance=10000.0))
+        assert not ach.condition(_make_ctx(cumulative_revenue=5000.0))
+        assert ach.condition(_make_ctx(cumulative_revenue=10000.0))
 
     def test_profit_streak_7_condition(self) -> None:
         ach = next(a for a in BUILTIN_ACHIEVEMENTS if a.id == "profit_streak_7")
