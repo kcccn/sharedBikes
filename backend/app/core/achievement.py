@@ -287,7 +287,7 @@ class AchievementEngine:
         self._ticks_per_day = 1440
 
         # Subscribe to EventBus tick events
-        EventBus.get_instance().subscribe("tick", self._on_tick, key="achievement")
+        EventBus().subscribe("tick", self._on_tick, key="achievement")
 
     # ── registration ────────────────────────────────────────────
 
