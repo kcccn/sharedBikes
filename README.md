@@ -10,35 +10,42 @@
 
 ---
 
-## ✅ Phase 0: 项目骨架（已完成）
+## ✅ 项目状态
 
-分层架构、领域模型定义、API 端点、模拟引擎核心均已搭建完成。
+分层架构、领域模型、模拟引擎核心已搭建完成。Phase 1–5 全部实现，**Demo 已可运行**。
 
-📖 [架构文档](docs/architecture.md)
+📖 [架构文档](docs/architecture.md) · 🗺️ [路线图看板](https://github.com/kcccn/sharedBikes/issues/78)
 
-## 🚀 路线图 (Roadmap)
+## 🚀 路线图
 
-每个 Phase 都有对应的 Issue 追踪进度，欢迎参与讨论！
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| Phase 1 | 真实地图数据接入 (OSM + 布站 + 配置) | ✅ 完成 |
+| Phase 2 | 经济系统：Ledger-First 架构 | ✅ 完成 |
+| Phase 3 | 调度系统集成（调度分析→执行→记账） | ✅ 完成 |
+| Phase 4 | API 接线 + NPC 需求引擎 | ✅ 完成 |
+| Phase 4.5 | EventBus 发布/订阅层 | ✅ 完成 |
+| Phase 5 | Web 前端 MVP：Leaflet 地图 + WebSocket 实时推送 | ✅ 完成 |
+| Phase 6 | 成就引擎 · 多人排行榜 · 热力图 | 🚧 进行中 |
 
-### Phase 1: 基础设施 — 真实地图解析与静态车辆投放
-| 任务 | 状态 | PR / 说明 |
-|------|------|-----------|
-| [#21 RFC: 方案设计](https://github.com/kcccn/sharedBikes/issues/21) | 🆕 讨论中 | 选型 osmnx vs osmium，确定技术路线 |
-| [#23 OSM 路网解析](https://github.com/kcccn/sharedBikes/issues/23) | ✅ 已实现 | OSM 数据 → City.Node/Edge 转换管线 |
-| [#25 站点自动放置](https://github.com/kcccn/sharedBikes/issues/25) | ✅ 已实现 | 基于路网节点度的贪心站点生成算法 |
-| [#34 城市配置系统](https://github.com/kcccn/sharedBikes/issues/34) | ✅ 已实现 | TOML 配置 + CityLoader + 多城市支持 |
-| [#27 MapService 集成](https://github.com/kcccn/sharedBikes/issues/27) | ✅ 已实现 | 配置→解析→布站→缓存的完整管线 |
-| [#36 集成测试 & 演示](https://github.com/kcccn/sharedBikes/issues/36) | ✅ 已实现 | E2E 验证与演示脚本 |
+### 快速启动 Demo
 
-### Phase 2: 动态城市
-*引入基于时间的 NPC 需求生成机制（通勤潮汐模拟）—— 待 Phase 1 完成后分解*
+```bash
+cd backend
+uvicorn app.main:app --reload
+# 浏览器打开 http://localhost:8000 查看 Leaflet 实时地图
+```
 
-### Phase 3: 调度博弈
-*加入调度员派遣与财务结算系统 —— 待 Phase 2 完成后分解*
+### Phase 6 当前任务
 
-### Phase 4: 视觉盛宴
-*接入 Deck.gl，完成热力图与 OD 轨迹流的高帧率渲染 —— 待 Phase 3 完成后分解*
+| 任务 | 说明 |
+|------|------|
+| AchievementEngine | 纯后端成就判定引擎（里程碑/连击/积分），零 UI 依赖 |
+| Leaderboard | 异步排行榜 API，基于 Ledger 数据聚合 |
+| Heatmap | 站点级 demand_factor 着色，网格级 → 后续版本 |
 
-## 🤝 参与贡献 (Contributing)
+详见 [#120](https://github.com/kcccn/sharedBikes/issues/120)
 
-请查看 [Issues](https://github.com/kcccn/sharedBikes/issues) 页面，从 Phase 1 的讨论开始参与吧。
+## 🤝 参与贡献
+
+查看 [Issues](https://github.com/kcccn/sharedBikes/issues) 页面，或关注 [#78 路线图看板](https://github.com/kcccn/sharedBikes/issues/78) 了解当前进度。
