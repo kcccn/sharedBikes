@@ -30,7 +30,11 @@ def _make_ctx(
     trip_count: int = 0,
     profit_today: float = 0.0,
     cumulative_balance: float = 0.0,
+    cumulative_revenue: float = 0.0,
     daily_profit_history: list[float] | None = None,
+    consecutive_trip_count: int = 0,
+    station_inventory: dict[str, int] | None = None,
+    station_capacity: dict[str, int] | None = None,
 ) -> EvaluationContext:
     return EvaluationContext(
         tick=tick,
@@ -41,9 +45,12 @@ def _make_ctx(
         revenue_today=0.0,
         profit_today=profit_today,
         cumulative_balance=cumulative_balance,
-        station_inventory={},
+        cumulative_revenue=cumulative_revenue,
+        station_inventory=station_inventory or {},
+        station_capacity=station_capacity or {},
         daily_profit_history=daily_profit_history or [],
         dispatch_movements=[],
+        consecutive_trip_count=consecutive_trip_count,
     )
 
 
