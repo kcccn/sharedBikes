@@ -86,7 +86,6 @@ async def simulation_ws(websocket: WebSocket) -> None:
 
     # ── Sync→async bridge via asyncio.Queue ──────────────────────
     queue: asyncio.Queue[TickEvents] = asyncio.Queue()
-    _loop = asyncio.get_running_loop()
     _closed = False
 
     def tick_handler(event: TickEvents) -> None:
