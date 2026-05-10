@@ -4,7 +4,10 @@ Phase 5: mounts the WebSocket router at ``/api/v1`` for the real-time
 simulation broadcast (bootstrap protocol + EventBus tick stream).
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.api.v1.ws import ws_router
@@ -26,3 +29,8 @@ async def health() -> dict[str, str]:
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/api/v1")
+
+# ── Serve static frontend ────────────────────────────────────────
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
