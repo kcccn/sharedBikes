@@ -95,7 +95,7 @@ async def simulation_ws(websocket: WebSocket) -> None:
 
     # Unique subscription key per connection to support multiple WS clients
     conn_key = f"ws_{id(websocket)}"
-    bus = EventBus.get_instance()
+    bus = EventBus()
     bus.subscribe("tick", tick_handler, key=conn_key)
 
     try:
