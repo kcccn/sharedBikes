@@ -372,3 +372,106 @@ class TestAchievementEngine:
         assert "profit_streak_7" in self.engine._state.unlocked
         # perfect_dispatch: 5 consecutive trips
         assert "perfect_dispatch" in self.engine._state.unlocked
+
+    # ── engine-level integration: consecutive trips ─────────────
+
+    def test_consecutive_trips_through_ticks(self) -> None:
+        """Verify ConsecutiveTrips counts through actual tick events with idle gaps."""
+        self.engine.register(
+            AchievementDef(
+                id="consec3", name="Consec3", description="",
+                category=AchievementCategory.MILESTONE,
+                condition=ConsecutiveTrips(3),
+                reward=AchievementReward(10.0, "3 consecutive"),
+            )
+        )
+
+        # Tick 1: one completed trip (TRIP_INCOME)
+        e1 = _make_tick_event(tick=1, entries=[
+            LedgerEntry(tick=1, entry_id="t1", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+        ])
+        self.engine._on_tick(e1)
+        assert self.engine._state.consecutive_trip_counter == 1
+        assert "consec3" not in self.engine._state.unlocked
+
+        # Tick 2: two completed trips (still consecutive)
+        e2 = _make_tick_event(tick=2, entries=[
+            LedgerEntry(tick=2, entry_id="t2", category=RevenueCategory.TRIP_INCOME, amount=3.0),
+            LedgerEntry(tick=2, entry_id="t3", category=RevenueCategory.TRIP_INCOME, amount=4.0),
+        ])
+        self.engine._on_tick(e2)
+        assert self.engine._state.consecutive_trip_counter == 3  # 1 + 2
+        assert "consec3" in self.engine._state.unlocked
+
+    def test_consecutive_trips_reset_on_idle(self) -> None:
+        """Verify idle tick resets the consecutive counter."""
+        self.engine.register(
+            AchievementDef(
+                id="consec3", name="Consec3", description="",
+                category=AchievementCategory.MILESTONE,
+                condition=ConsecutiveTrips(3),
+                reward=AchievementReward(10.0, "3 consecutive"),
+            )
+        )
+
+        # Tick 1: trip
+        e1 = _make_tick_event(tick=1, entries=[
+            LedgerEntry(tick=1, entry_id="t1", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+        ])
+        self.engine._on_tick(e1)
+        assert self.engine._state.consecutive_trip_counter == 1
+
+        # Tick 2: idle — no trips → counter resets to 0
+        e2 = _make_tick_event(tick=2, entries=[])
+        self.engine._on_tick(e2)
+        assert self.engine._state.consecutive_trip_counter == 0
+
+        # Tick 3: trip again — starts from 1, not 2
+        e3 = _make_tick_event(tick=3, entries=[
+            LedgerEntry(tick=3, entry_id="t3", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+        ])
+        self.engine._on_tick(e3)
+        assert self.engine._state.consecutive_trip_counter == 1
+        assert "consec3" not in self.engine._state.unlocked
+
+    # ── engine-level integration: day-boundary profit ───────────
+
+    def test_daily_profit_accumulation_and_flush(self) -> None:
+        """Verify profit accumulates across ticks and flushes at day boundary."""
+        self.engine.register(
+            AchievementDef(
+                id="profit50", name="Profit50", description="",
+                category=AchievementCategory.MILESTONE,
+                condition=ProfitTodayGe(50.0),
+                reward=AchievementReward(10.0, "50 profit in a day"),
+            )
+        )
+
+        # Tick 100 (day 0, mid-day): earn 30
+        e1 = _make_tick_event(tick=100, entries=[
+            LedgerEntry(tick=100, entry_id="e1", category=RevenueCategory.TRIP_INCOME, amount=30.0),
+        ])
+        self.engine._on_tick(e1)
+        assert self.engine._state.current_day_profit == 30.0
+        assert "profit50" not in self.engine._state.unlocked
+
+        # Tick 200 (day 0, still): earn 25 more → accumulated 55
+        e2 = _make_tick_event(tick=200, entries=[
+            LedgerEntry(tick=200, entry_id="e2", category=RevenueCategory.TRIP_INCOME, amount=25.0),
+        ])
+        self.engine._on_tick(e2)
+        assert self.engine._state.current_day_profit == 55.0
+        # ProfitTodayGe checks accumulated profit_today
+        assert "profit50" in self.engine._state.unlocked
+
+        # Tick 1440 (day 1, day boundary): flush day 0's profit to history
+        assert len(self.engine._state.daily_profit_history) == 0
+        e3 = _make_tick_event(tick=1440, entries=[
+            LedgerEntry(tick=1440, entry_id="e3", category=RevenueCategory.TRIP_INCOME, amount=10.0),
+        ])
+        self.engine._on_tick(e3)
+        # Day 0's accumulated profit (55.0) was flushed
+        assert len(self.engine._state.daily_profit_history) == 1
+        assert self.engine._state.daily_profit_history[0] == 55.0
+        # current_day_profit reset and now has tick 1440's 10.0
+        assert self.engine._state.current_day_profit == 10.0
