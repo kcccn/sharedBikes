@@ -200,14 +200,15 @@ class Streak:
 class ConsecutiveTrips:
     """Complete *n* consecutive trips without idle ticks.
 
-    Tracks via ``AchievementState.counters["consecutive_trips"]``.
-    The engine resets the counter whenever a tick has zero completed trips.
+    Uses ``EvaluationContext.consecutive_trip_count`` which the engine
+    maintains across ticks — incremented on ticks with completed trips,
+    reset to 0 on idle ticks.
     """
 
     n: int
 
     def __call__(self, ctx: EvaluationContext) -> bool:
-        return ctx.trip_count >= self.n
+        return ctx.consecutive_trip_count >= self.n
 
 
 @dataclass(frozen=True)
