@@ -114,6 +114,7 @@
             // ── One-shot: create all station markers ──
             for (const st of msg.stations) {
               stationNames[st.station_id] = st.name;
+              stationCapacities.set(st.station_id, st.capacity);
 
               if (markers.has(st.station_id)) continue;
 
