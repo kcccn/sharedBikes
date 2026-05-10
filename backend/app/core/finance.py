@@ -20,6 +20,7 @@ class RevenueCategory(Enum):
     TRIP_INCOME = "trip_income"
     DISPATCH_FEE = "dispatch_fee"
     SUBSCRIPTION = "subscription"
+    ACHIEVEMENT_REWARD = "achievement_reward"
 
 
 class CostCategory(Enum):
