@@ -232,11 +232,13 @@ class AchievementEngine:
             if tick_in_day != 0 and current_day == state.last_day:
                 continue
 
-            # Build context — is the day condition met?
+            # Build context — evaluator checks event profit/revenue
             ctx = {
                 "tick": tick,
-                "day_condition_met": False,  # evaluator will refine
+                "day_condition_met": bool(getattr(events, "profit", 0) > 0),
                 "current_streak": state.current_streak,
+                "profit": getattr(events, "profit", 0.0),
+                "revenue": getattr(events, "revenue", 0.0),
             }
             day_met = ach.evaluator(ctx)
             state.last_day = current_day
