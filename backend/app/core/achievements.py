@@ -271,6 +271,7 @@ class AchievementEngine:
             ctx = {
                 "tick": tick,
                 "report": getattr(events, "_daily_report", None),
+                "target": ach.target_value,
             }
             if ach.evaluator(ctx):
                 state.unlocked = True
