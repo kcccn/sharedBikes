@@ -88,12 +88,12 @@ class TestTripCountGe:
 class TestRevenueGe:
     def test_below(self) -> None:
         c = RevenueGe(100.0)
-        ctx = _make_ctx(cumulative_balance=50.0)
+        ctx = _make_ctx(cumulative_revenue=50.0)
         assert not c(ctx)
 
     def test_at_threshold(self) -> None:
         c = RevenueGe(100.0)
-        ctx = _make_ctx(cumulative_balance=100.0)
+        ctx = _make_ctx(cumulative_revenue=100.0)
         assert c(ctx)
 
 
