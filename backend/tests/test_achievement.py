@@ -372,10 +372,10 @@ class TestAchievementEngine:
         assert self.engine.unlocked_count == 1
 
         # Second tick — condition still true, but already unlocked
-        ledger_len_before = len(self.engine._ledger)
+        ledger_len_before = len(self.fake_engine.ledger)
         self.engine._on_tick(_make_tick_event(tick=2))
         assert self.engine.unlocked_count == 1
-        assert len(self.engine._ledger) == ledger_len_before  # no duplicate entry
+        assert len(self.fake_engine.ledger) == ledger_len_before  # no duplicate entry
 
     def test_builtin_achievements_unlock(self) -> None:
         self.engine.register(*BUILTIN_ACHIEVEMENTS)
