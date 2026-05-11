@@ -69,8 +69,10 @@ class EngineManager:
         )
 
         # Wire AchievementEngine (Phase 6 P0)
-        # Automatically subscribes to EventBus "tick" events via __init__
-        achievement_engine = AchievementEngine(ledger=Ledger())
+        # Pass the engine so achievement unlocks are written to the simulation's
+        # own ledger — NOT a private Ledger() instance (dual-ledger fix).
+        # AchievementEngine.__init__ subscribes to EventBus "tick" events.
+        achievement_engine = AchievementEngine(engine=self._engine)
         achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
     @staticmethod
