@@ -291,17 +291,21 @@ class AchievementState:
 class AchievementEngine:
     """Tick-driven achievement engine.
 
+    Writes unlock entries to the simulation engine's ledger via
+    ``SimulationEngine.append_ledger()``, ensuring achievement bonuses
+    are visible in the same ledger used for balance / query operations.
+
     Usage::
 
-        engine = AchievementEngine(ledger)
+        engine = AchievementEngine(sim_engine)
         engine.register(*BUILTIN_ACHIEVEMENTS)
         # AchievementEngine.__init__ subscribes to EventBus "tick"
     """
 
-    def __init__(self, ledger: Ledger) -> None:
+    def __init__(self, engine: SimulationEngine) -> None:
         self._registry: dict[str, AchievementDef] = {}
         self._state = AchievementState()
-        self._ledger = ledger
+        self._engine = engine
         self._ticks_per_day = 1440
 
         # Subscribe to EventBus tick events
