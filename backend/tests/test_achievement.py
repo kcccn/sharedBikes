@@ -294,8 +294,8 @@ class TestBuiltinAchievements:
 class TestAchievementEngine:
     def setup_method(self) -> None:
         EventBus.reset_instance()
-        self.ledger = Ledger()
-        self.engine = AchievementEngine(self.ledger)
+        self.fake_engine = _FakeEngine()
+        self.engine = AchievementEngine(self.fake_engine)
 
     def test_register_single(self) -> None:
         defn = AchievementDef(
