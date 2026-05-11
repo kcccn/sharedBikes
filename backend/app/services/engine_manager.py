@@ -7,8 +7,10 @@ provides thin wrappers around the engine's lifecycle and query methods.
 
 from __future__ import annotations
 
+from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
+from app.core.finance import Ledger
 from app.core.fleet import Bike, Fleet
 from app.core.scheduler import GreedyThresholdStrategy
 from app.core.weather import Environment
@@ -56,14 +58,20 @@ class EngineManager:
         environment = Environment()
         strategy = GreedyThresholdStrategy()
         trip_generator = RuleBasedDemandService()
+        engine_event_bus = EventBus()
         self._engine = SimulationEngine(
             city=city,
             fleet=fleet,
             environment=environment,
             strategy=strategy,
             trip_generator=trip_generator,
-            event_bus=EventBus(),
+            event_bus=engine_event_bus,
         )
+
+        # Wire AchievementEngine (Phase 6 P0)
+        # Automatically subscribes to EventBus "tick" events via __init__
+        achievement_engine = AchievementEngine(ledger=Ledger())
+        achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
     @staticmethod
     def _build_starter_fleet() -> Fleet:
