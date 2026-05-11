@@ -58,14 +58,20 @@ class EngineManager:
         environment = Environment()
         strategy = GreedyThresholdStrategy()
         trip_generator = RuleBasedDemandService()
+        engine_event_bus = EventBus()
         self._engine = SimulationEngine(
             city=city,
             fleet=fleet,
             environment=environment,
             strategy=strategy,
             trip_generator=trip_generator,
-            event_bus=EventBus(),
+            event_bus=engine_event_bus,
         )
+
+        # Wire AchievementEngine (Phase 6 P0)
+        # Automatically subscribes to EventBus "tick" events via __init__
+        achievement_engine = AchievementEngine(ledger=Ledger())
+        achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
     @staticmethod
     def _build_starter_fleet() -> Fleet:
