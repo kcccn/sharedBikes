@@ -332,9 +332,9 @@ class AchievementEngine:
         if not isinstance(event, TickEvents):
             return
 
+        self._update_consecutive_trips(event)
         ctx = self._build_context(event)
         self._update_streaks(ctx)
-        self._update_consecutive_trips(event)
         new_unlocks: list[AchievementDef] = []
 
         for defn in self._registry.values():
