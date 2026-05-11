@@ -7,8 +7,10 @@ provides thin wrappers around the engine's lifecycle and query methods.
 
 from __future__ import annotations
 
+from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
+from app.core.finance import Ledger
 from app.core.fleet import Bike, Fleet
 from app.core.scheduler import GreedyThresholdStrategy
 from app.core.weather import Environment
