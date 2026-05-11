@@ -350,8 +350,8 @@ class TestAchievementEngine:
         event = _make_tick_event(tick=5)
         self.engine._on_tick(event)
 
-        # Check Ledger has the achievement entry
-        entries = self.engine._ledger.query(
+        # Check engine's ledger has the achievement entry
+        entries = self.fake_engine.ledger.query(
             category=RevenueCategory.ACHIEVEMENT,
         )
         assert len(entries) == 1
