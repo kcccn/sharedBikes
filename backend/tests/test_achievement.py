@@ -179,24 +179,24 @@ class TestStationUtilizationGe:
 class TestAllOf:
     def test_all_true(self) -> None:
         c = AllOf((TripCountGe(1), RevenueGe(10.0)))
-        ctx = _make_ctx(trip_count=5, cumulative_balance=50.0)
+        ctx = _make_ctx(trip_count=5, cumulative_revenue=50.0)
         assert c(ctx)
 
     def test_one_false(self) -> None:
         c = AllOf((TripCountGe(10), RevenueGe(10.0)))
-        ctx = _make_ctx(trip_count=5, cumulative_balance=50.0)
+        ctx = _make_ctx(trip_count=5, cumulative_revenue=50.0)
         assert not c(ctx)
 
 
 class TestAnyOf:
     def test_one_true(self) -> None:
         c = AnyOf((TripCountGe(10), RevenueGe(10.0)))
-        ctx = _make_ctx(trip_count=5, cumulative_balance=50.0)
+        ctx = _make_ctx(trip_count=5, cumulative_revenue=50.0)
         assert c(ctx)
 
     def test_none_true(self) -> None:
         c = AnyOf((TripCountGe(10), RevenueGe(200.0)))
-        ctx = _make_ctx(trip_count=5, cumulative_balance=50.0)
+        ctx = _make_ctx(trip_count=5, cumulative_revenue=50.0)
         assert not c(ctx)
 
 
