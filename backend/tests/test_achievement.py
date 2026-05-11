@@ -1,5 +1,7 @@
 """Tests for the AchievementEngine (achievement.py)."""
 
+from dataclasses import dataclass, field
+
 from app.core.achievement import (
     AchievementCategory,
     AchievementDef,
@@ -20,6 +22,28 @@ from app.core.achievement import (
 from app.core.engine import TickEvents
 from app.core.event_bus import EventBus
 from app.core.finance import Ledger, LedgerEntry, RevenueCategory
+
+
+# ── test helper: fake engine ────────────────────────────────────
+
+
+@dataclass
+class _FakeEngine:
+    """Minimal SimulationEngine stand-in for AchievementEngine tests.
+
+    Provides the same ``ledger`` property and ``append_ledger()`` method
+    that ``AchievementEngine`` depends on, without requiring a full
+    simulation engine with City / Fleet / etc.
+    """
+
+    _ledger: Ledger = field(default_factory=Ledger)
+
+    @property
+    def ledger(self) -> Ledger:
+        return self._ledger
+
+    def append_ledger(self, entries: list[LedgerEntry]) -> None:
+        self._ledger = self._ledger.append(entries)
 
 
 # ── helpers ─────────────────────────────────────────────────────
