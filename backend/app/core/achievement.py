@@ -107,10 +107,10 @@ class EvaluationContext:
     profit_today: float  # running accumulated profit for the current in-progress day
     cumulative_balance: float  # net balance (revenue - costs)
     cumulative_revenue: float = 0.0  # gross cumulative revenue (positive entries only)
-    station_inventory: dict[str, int]
+    station_inventory: dict[str, int] = field(default_factory=dict)
     station_capacity: dict[str, int] = field(default_factory=dict)
-    daily_profit_history: list[float]  # profit for each completed day
-    dispatch_movements: list[tuple[str, str, int]]
+    daily_profit_history: list[float] = field(default_factory=list)
+    dispatch_movements: list[tuple[str, str, int]] = field(default_factory=list)
     consecutive_trip_count: int = 0  # trips on consecutive non-idle ticks
 
 
