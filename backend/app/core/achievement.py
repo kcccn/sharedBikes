@@ -351,7 +351,7 @@ class AchievementEngine:
                 self._state.unlocked.add(defn.id)
                 new_unlocks.append(defn)
 
-        # Batch-write unlocks to Ledger
+        # Batch-write unlocks to the simulation engine's ledger
         if new_unlocks:
             entries = [
                 LedgerEntry(
@@ -363,7 +363,7 @@ class AchievementEngine:
                 )
                 for d in new_unlocks
             ]
-            self._ledger = self._ledger.append(entries)
+            self._engine.append_ledger(entries)
 
         # Track cumulative counters
         self._state.counters["trip_count"] = ctx.trip_count
