@@ -359,9 +359,14 @@ class TestAchievementEngine:
         self.engine._state.counters["cumulative_balance"] = 15000.0
         self.engine._state.counters["cumulative_revenue"] = 15000.0
         self.engine._state.daily_profit_history = [1.0] * 7
-        self.engine._state.consecutive_trip_counter = 5
 
-        event = _make_tick_event(tick=1440)
+        event = _make_tick_event(tick=1440, entries=[
+            LedgerEntry(tick=1440, entry_id="t1", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+            LedgerEntry(tick=1440, entry_id="t2", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+            LedgerEntry(tick=1440, entry_id="t3", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+            LedgerEntry(tick=1440, entry_id="t4", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+            LedgerEntry(tick=1440, entry_id="t5", category=RevenueCategory.TRIP_INCOME, amount=5.0),
+        ])
         self.engine._on_tick(event)
 
         # first_trip: trip_count>=1
