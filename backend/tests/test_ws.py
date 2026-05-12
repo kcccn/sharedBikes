@@ -76,12 +76,12 @@ class TestWebSocketBootstrap:
         assert "stations" in msg
         assert len(msg["stations"]) > 0
 
-        # Each station must have all required fields
+        # Each station must have all required fields (abstract Coord: x, y)
         for station in msg["stations"]:
             assert "station_id" in station
             assert "name" in station
-            assert "lat" in station
-            assert "lng" in station
+            assert "x" in station
+            assert "y" in station
             assert "capacity" in station
 
     def test_bootstrap_fields_are_correct_types(
@@ -94,8 +94,8 @@ class TestWebSocketBootstrap:
         station = msg["stations"][0]
         assert isinstance(station["station_id"], str)
         assert isinstance(station["name"], str)
-        assert isinstance(station["lat"], (int, float))
-        assert isinstance(station["lng"], (int, float))
+        assert isinstance(station["x"], (int, float))
+        assert isinstance(station["y"], (int, float))
         assert isinstance(station["capacity"], int)
 
 
