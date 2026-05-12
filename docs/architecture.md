@@ -149,4 +149,4 @@ Connect → [bootstrap: 全量站点+单车快照]
 | 6P1 | 异步排行榜 (StationStatsTracker) | ✅ 完成 |
 | 6P2 | 供需热力图 (demand_factor + Leaflet.heat) | ✅ 完成 |
 | **7A** | **抽象坐标替换：GridCoord + ProceduralCityGenerator** | ✅ **完成** |
-| **7B** | **Canvas 前端渲染（替换 Leaflet）** | **🔄 进行中** |
+| **7B** | **Canvas 前端渲染（替换 Leaflet）** | ✅ **完成** |
