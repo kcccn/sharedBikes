@@ -4,15 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CityBike Sim — 实时地图</title>
-  <!-- Leaflet from CDN -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Leaflet.heat for heatmap layer (Phase 6 P2) -->
-  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-    #map { height: 100%; width: 100%; }
+    html, body { height: 100%; overflow: hidden; background: #1a1a2e; }
+    canvas { display: block; width: 100%; height: 100%; }
     #status-bar {
       position: fixed; top: 10px; right: 10px; z-index: 1000;
       background: rgba(0,0,0,0.7); color: #fff;
@@ -21,14 +16,23 @@
     }
     #status-bar.connected { background: rgba(40,167,69,0.85); }
     #status-bar.disconnected { background: rgba(220,53,69,0.85); }
-    .leaflet-popup-content { font: 14px/1.6 sans-serif; min-width: 140px; }
-    .leaflet-popup-content h3 { margin: 0 0 4px; font-size: 16px; }
-    .leaflet-popup-content .bikes { font-size: 18px; font-weight: bold; color: #2c3e50; }
+    #tooltip {
+      position: fixed; z-index: 999;
+      background: rgba(0,0,0,0.85); color: #fff;
+      padding: 10px 14px; border-radius: 10px;
+      font: 14px/1.6 sans-serif;
+      pointer-events: none; display: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      min-width: 140px;
+    }
+    #tooltip h3 { margin: 0 0 4px; font-size: 16px; }
+    #tooltip .bikes { font-size: 18px; font-weight: bold; color: #ffd700; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <canvas id="canvas"></canvas>
   <div id="status-bar" class="disconnected">⏳ 连接中…</div>
+  <div id="tooltip"></div>
 
   <script>
     (function() {
@@ -39,17 +43,189 @@
         return `${proto}//${loc.host}/api/v1/ws`;
       })(window.location);
 
-      // ── Map initialisation ────────────────────────────────────
-      const map = L.map('map').setView([39.9042, 116.4074], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 18,
-      }).addTo(map);
+      // ── Canvas setup ─────────────────────────────────────────
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
 
-      // ── Newbie guide (auto-dismiss) ──────────────────────────
+      /** Grid cell count (inferred from data or default 20) */
+      let gridCols = 20;
+      let gridRows = 20;
+
+      /** @type {Map<number, {x:number, y:number, name:string, capacity:number, bikes:number}>} */
+      const stations = new Map();
+
+      /** Heatmap demand factors: stationId -> factor [0,1] */
+      const demandFactors = new Map();
+
+      let cellSize = 0;
+      let gridOffsetX = 0;
+      let gridOffsetY = 0;
+
+      // ── Resize / render loop ──────────────────────────────────
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+
+        // Compute cell size to fit grid with padding
+        const padding = 40;
+        const availW = w - padding * 2;
+        const availH = h - padding * 2;
+        cellSize = Math.min(availW / gridCols, availH / gridRows, 28);
+        gridOffsetX = (w - cellSize * gridCols) / 2;
+        gridOffsetY = (h - cellSize * gridRows) / 2;
+
+        draw();
+      }
+
+      window.addEventListener('resize', resize);
+
+      // ── Drawing ───────────────────────────────────────────────
+      function draw() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ctx.clearRect(0, 0, w, h);
+
+        // Background
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, w, h);
+
+        // ── Grid background ──
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 0.5;
+        for (let c = 0; c <= gridCols; c++) {
+          const x = gridOffsetX + c * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(x, gridOffsetY);
+          ctx.lineTo(x, gridOffsetY + gridRows * cellSize);
+          ctx.stroke();
+        }
+        for (let r = 0; r <= gridRows; r++) {
+          const y = gridOffsetY + r * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(gridOffsetX, y);
+          ctx.lineTo(gridOffsetX + gridCols * cellSize, y);
+          ctx.stroke();
+        }
+
+        // ── Heatmap overlay ──
+        if (demandFactors.size > 0) {
+          for (const [sid, factor] of demandFactors) {
+            const st = stations.get(sid);
+            if (!st || factor <= 0) continue;
+            const cx = gridOffsetX + st.x * cellSize;
+            const cy = gridOffsetY + st.y * cellSize;
+            const radius = cellSize * 1.5;
+
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            grad.addColorStop(0, `rgba(255, 100, 50, ${Math.min(factor * 0.6, 0.6)})`);
+            grad.addColorStop(0.5, `rgba(255, 100, 50, ${Math.min(factor * 0.3, 0.3)})`);
+            grad.addColorStop(1, `rgba(255, 100, 50, 0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // ── Station circles ──
+        const stationRadius = Math.max(cellSize * 0.35, 10);
+
+        for (const [sid, st] of stations) {
+          const cx = gridOffsetX + st.x * cellSize;
+          const cy = gridOffsetY + st.y * cellSize;
+          const ratio = st.capacity > 0 ? st.bikes / st.capacity : 0;
+
+          // Color by ratio
+          let color;
+          if (ratio === 0) color = '#dc3545';
+          else if (ratio < 0.3) color = '#fd7e14';
+          else if (ratio < 0.7) color = '#ffc107';
+          else color = '#28a745';
+
+          // Circle shadow
+          ctx.shadowColor = 'rgba(0,0,0,0.3)';
+          ctx.shadowBlur = 6;
+
+          // Circle fill
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(cx, cy, stationRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // White border
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Bike count text
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.max(stationRadius * 0.7, 11)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(st.bikes), cx, cy + 0.5);
+        }
+
+        // ── Grid label (bottom-left) ──
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`Grid: ${gridCols}×${gridRows}  Cell: ${cellSize.toFixed(1)}px`, 10, h - 8);
+      }
+
+      // ── Tooltip ───────────────────────────────────────────────
+      const tooltip = document.getElementById('tooltip');
+
+      canvas.addEventListener('mousemove', (e) => {
+        const mx = e.clientX;
+        const my = e.clientY;
+
+        // Find station under cursor
+        const r = Math.max(cellSize * 0.35, 10);
+        let found = null;
+        for (const [sid, st] of stations) {
+          const sx = gridOffsetX + st.x * cellSize;
+          const sy = gridOffsetY + st.y * cellSize;
+          const dist = Math.hypot(mx - sx, my - sy);
+          if (dist <= r + 4) {
+            found = { sid, ...st };
+            break;
+          }
+        }
+
+        if (found) {
+          const ratio = found.capacity > 0 ? (found.bikes / found.capacity * 100).toFixed(0) : '0';
+          tooltip.style.display = 'block';
+          tooltip.style.left = (mx + 14) + 'px';
+          tooltip.style.top = (my - 10) + 'px';
+          tooltip.innerHTML = `
+            <h3>${found.name}</h3>
+            <p>可用车辆: <span class="bikes">${found.bikes}</span> / ${found.capacity} 辆</p>
+            <p>使用率: ${ratio}%</p>
+          `;
+          canvas.style.cursor = 'pointer';
+        } else {
+          tooltip.style.display = 'none';
+          canvas.style.cursor = 'default';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+
+      // ── Newbie guide ──────────────────────────────────────────
       const guide = document.createElement('div');
       guide.id = 'newbie-guide';
-      guide.innerHTML = '💡 <b>提示：</b>点击地图上的彩色圆圈可查看站点可用车辆数';
+      guide.innerHTML = '💡 <b>提示：</b>将鼠标悬停在彩色圆圈上可查看站点可用车辆数';
       Object.assign(guide.style, {
         position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
         zIndex: 1000, background: 'rgba(0,0,0,0.75)', color: '#fff',
@@ -61,52 +237,6 @@
       document.body.appendChild(guide);
       setTimeout(() => { guide.style.opacity = '0'; }, 8000);
       setTimeout(() => { guide.remove(); }, 8800);
-
-      // ── Station markers ───────────────────────────────────────
-      /** @type {Map<number, L.Marker>} */
-      const markers = new Map();
-      let stationNames = {};
-      const stationCapacities = new Map();
-
-      // ── Heatmap layer (Phase 6 P2) ────────────────────────────
-      let heatLayer = null;
-
-      function getIcon(bikes, capacity) {
-        const ratio = capacity > 0 ? bikes / capacity : 0;
-        let color;
-        if (ratio === 0) color = '#dc3545';
-        else if (ratio < 0.3) color = '#fd7e14';
-        else if (ratio < 0.7) color = '#ffc107';
-        else color = '#28a745';
-
-        return L.divIcon({
-          className: '',
-          html: `<div style="
-            background:${color}; color:#fff; width:28px; height:28px;
-            border-radius:50%; display:flex; align-items:center;
-            justify-content:center; font:bold 13px/1 sans-serif;
-            border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.3);
-          ">${bikes}</div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
-          popupAnchor: [0, -16],
-        });
-      }
-
-      function buildPopupContent(stationId, bikes, capacity) {
-        const name = stationNames[stationId] || `车站 #${stationId}`;
-        return `
-          <h3>${name}</h3>
-          <p>可用车辆: <span class="bikes">${bikes}</span> / ${capacity} 辆</p>
-        `;
-      }
-
-      function updateMarker(stationId, bikes, capacity) {
-        const marker = markers.get(stationId);
-        if (!marker) return;
-        marker.setIcon(getIcon(bikes, capacity));
-        marker.setPopupContent(buildPopupContent(stationId, bikes, capacity));
-      }
 
       // ── WebSocket ─────────────────────────────────────────────
       const statusBar = document.getElementById('status-bar');
@@ -132,53 +262,55 @@
           }
 
           if (msg.type === 'bootstrap') {
-            // ── One-shot: create all station markers ──
+            // ── Bootstrap: initialise grid and stations ──
+            stations.clear();
+            demandFactors.clear();
+
+            // Infer grid size from station positions
+            let maxX = 0;
+            let maxY = 0;
             for (const st of msg.stations) {
-              stationNames[st.station_id] = st.name;
-              stationCapacities.set(st.station_id, st.capacity);
+              if (st.x > maxX) maxX = st.x;
+              if (st.y > maxY) maxY = st.y;
+            }
+            gridCols = Math.max(Math.ceil(maxX) + 1, 20);
+            gridRows = Math.max(Math.ceil(maxY) + 1, 20);
 
-              if (markers.has(st.station_id)) continue;
-
-              const marker = L.marker([st.lat, st.lng], {
-                icon: getIcon(0, st.capacity),
-              })
-                .addTo(map)
-                .bindPopup(buildPopupContent(st.station_id, 0, st.capacity));
-
-              markers.set(st.station_id, marker);
+            // Populate stations
+            for (const st of msg.stations) {
+              stations.set(st.station_id, {
+                x: st.x,
+                y: st.y,
+                name: st.name || `车站 #${st.station_id}`,
+                capacity: st.capacity,
+                bikes: 0,
+              });
             }
 
-            // ── Initialise heatmap layer (Phase 6 P2) ──
-            heatLayer = L.heatLayer([], {
-              radius: 28, blur: 18, maxZoom: 17,
-              gradient: { 0.0: 'blue', 0.3: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' },
-            }).addTo(map);
+            resize();
 
-            statusBar.textContent = `🟢 已连接 — ${markers.size} 个站点`;
+            statusBar.textContent = `🟢 已连接 — ${stations.size} 个站点 (网格 ${gridCols}×${gridRows})`;
           } else if (msg.type === 'tick') {
-            // ── Tick: update marker icons & popups ──
+            // ── Tick: update station bikes & heatmap ──
             const inv = msg.station_inventory || {};
-            for (const [stationIdStr, bikes] of Object.entries(inv)) {
-              const sid = Number(stationIdStr);
-              const marker = markers.get(sid);
-              if (!marker) continue;
-              const capacity = stationCapacities.get(sid) ?? 20;
-              updateMarker(sid, bikes, capacity);
+            for (const [sidStr, bikes] of Object.entries(inv)) {
+              const sid = Number(sidStr);
+              const st = stations.get(sid);
+              if (st) {
+                st.bikes = bikes;
+              }
             }
 
-            // ── Update heatmap layer (Phase 6 P2) ──
-            if (heatLayer && msg.demand_factors) {
-              const heatPoints = [];
+            // ── Update demand factors (heatmap) ──
+            demandFactors.clear();
+            if (msg.demand_factors) {
               for (const [sidStr, factor] of Object.entries(msg.demand_factors)) {
-                const sid = Number(sidStr);
-                const marker = markers.get(sid);
-                if (marker && factor > 0) {
-                  const latlng = marker.getLatLng();
-                  heatPoints.push([latlng.lat, latlng.lng, factor]);
-                }
+                demandFactors.set(Number(sidStr), factor);
               }
-              heatLayer.setLatLngs(heatPoints);
             }
+
+            draw();
+
             statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
           }
         };
