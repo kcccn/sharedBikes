@@ -1,14 +1,22 @@
 ---
 name: phase-b-canvas-frontend-dispatched
-description: Phase 7B: Canvas Frontend — Dispatched to Coder
+description: Phase 7B Complete — Canvas Frontend Replaces Leaflet
 metadata:
   type: knowledge
-  tags: [phase-7, canvas, frontend, architecture]
+  tags: [phase-7b, canvas, frontend, complete]
   status: active
   created: 2026-05-12T19:18:02Z
-  updated: 2026-05-12T19:18:02Z
+  updated: 2026-05-12T19:25:10Z
 ---
 
 # Phase 7B: Canvas Frontend — Dispatched to Coder
 
-Phase 7B (Canvas frontend replacing Leaflet) has been spec'd and dispatched to coder. Issue #145 created with full acceptance criteria: Canvas 2D grid rendering, station circles at GridCoord positions, heatmap overlay without Leaflet.heat, same WS protocol. `docs/architecture.md` rewritten (PR #144) to reflect abstract coord direction. Architecture doc now covers Phase 0-7B with clear status markers.
+Phase 7B (Canvas frontend replacing Leaflet) is complete. PR #146 merged (squash, 3a565e0d). Key changes:
+- Removed all Leaflet CDN references (leaflet.js, leaflet.css, leaflet.heat)
+- Canvas 2D rendering with HiDPI (devicePixelRatio) support
+- Grid rendering matches abstract coordinate system (x/y from CityStation.position)
+- Station circles colored by usage ratio (red/orange/yellow/green)
+- Heatmap overlay ported from Leaflet.heat to Canvas RadialGradient
+- Tooltip div replaces Leaflet popup for hover interaction
+- Grid size inferred from bootstrap data
+- WS protocol unchanged (bootstrap with stations, tick with station_inventory + demand_factors)
