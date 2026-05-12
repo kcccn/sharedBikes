@@ -210,6 +210,22 @@
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
 
+      // Phase C: UI refs
+      const stationPanel = document.getElementById('station-panel');
+      const dashBalance = document.getElementById('dash-balance');
+      const toolbarBalance = document.getElementById('toolbar-balance');
+      const simTime = document.getElementById('sim-time');
+      const simDay = document.getElementById('sim-day');
+      const dashProfit = document.getElementById('dash-profit');
+      const dashAlert = document.getElementById('dash-alert');
+      const toast = document.getElementById('toast');
+      let toastTimer = null;
+
+      let playerBalance = 10000.0;
+      let selectedStationId = null;
+      let lastTickTime = '--:--';
+      let lastTickDay = 0;
+
       /** Grid cell count (inferred from data or default 20) */
       let gridCols = 20;
       let gridRows = 20;
