@@ -102,3 +102,27 @@ class FlowLine(BaseModel):
     to_lat: float
     to_lng: float
     volume: int
+
+
+# ---- Leaderboard (Phase 6 P1) ----
+
+class LeaderboardEntryOut(BaseModel):
+    station_id: str
+    trips_completed: int
+    revenue_generated: float
+    profit_contributed: float
+    achievement_count: int
+    dispatch_in: int
+    dispatch_out: int
+    last_active_tick: int
+
+
+class StationStatsOut(BaseModel):
+    station_id: str
+    trips_completed: int
+    revenue_generated: float
+    profit_contributed: float
+    achievement_count: int
+    dispatch_in: int
+    dispatch_out: int
+    last_active_tick: int
