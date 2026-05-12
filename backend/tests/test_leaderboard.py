@@ -200,20 +200,31 @@ class TestStationStatsTracker:
         assert len(board) == 3
 
     def test_leaderboard_revenue_sort(self) -> None:
-        """Leaderboard sorts by revenue."""
-        trips = [
+        """Leaderboard sorts descending by revenue."""
+        # Tick 1: S1 gets 2 trips, total revenue 100 → 50/trip → S1 = 100.0
+        trips_t1 = [
             _FakeTrip(from_station="S0", to_station="S1", trip_id="t1"),
-            _FakeTrip(from_station="S0", to_station="S2", trip_id="t2"),
+            _FakeTrip(from_station="S0", to_station="S1", trip_id="t2"),
         ]
-        entries = [
-            LedgerEntry(tick=1, entry_id="r1", category=RevenueCategory.TRIP_INCOME, amount=10.0, trip_id="t1"),
-            LedgerEntry(tick=1, entry_id="r2", category=RevenueCategory.TRIP_INCOME, amount=100.0, trip_id="t2"),
+        entries_t1 = [
+            LedgerEntry(tick=1, entry_id="r1", category=RevenueCategory.TRIP_INCOME, amount=100.0, trip_id="t1"),
         ]
-        event = _make_tick_event(tick=1, completed_trips=trips, ledger_entries=entries)
-        self.tracker._on_tick(event)
-        # Revenue distributed: total 110 / 2 = 55 each
+        self.tracker._on_tick(_make_tick_event(tick=1, completed_trips=trips_t1, ledger_entries=entries_t1))
+
+        # Tick 2: S2 gets 1 trip, total revenue 30 → 30/trip → S2 = 30.0
+        trips_t2 = [
+            _FakeTrip(from_station="S0", to_station="S2", trip_id="t3"),
+        ]
+        entries_t2 = [
+            LedgerEntry(tick=2, entry_id="r2", category=RevenueCategory.TRIP_INCOME, amount=30.0, trip_id="t3"),
+        ]
+        self.tracker._on_tick(_make_tick_event(tick=2, completed_trips=trips_t2, ledger_entries=entries_t2))
+
         board = self.tracker.get_leaderboard(sort_by="revenue", limit=10)
         assert len(board) == 2
+        assert board[0].station_id == "S1"
+        assert board[1].station_id == "S2"
+        assert board[0].revenue_generated > board[1].revenue_generated
 
     def test_leaderboard_empty(self) -> None:
         """Leaderboard returns empty list when no data."""
