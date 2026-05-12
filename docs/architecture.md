@@ -143,7 +143,7 @@ Connect → [bootstrap: 全量站点+单车快照]
 | 1 | ~~真实地图数据接入 (osmium/osmnx)~~ | ❌ 废弃 — 改为抽象坐标 |
 | 2 | NPC 通勤需求生成 | ✅ 完成 |
 | 3 | 调度员派遣系统 | ✅ 完成 |
-| 4 | ~~Leaflet 前端可视化~~ | ✅ 完成（已废弃，待替换为 Canvas） |
+| 4 | ~~Leaflet 前端可视化~~ | ❌ 废弃 — 已由 Phase 7B Canvas 替代 |
 | 5 | WebSocket bootstrap + tick 推流 | ✅ 完成 |
 | 6P0 | AchievementEngine + DSL + Ledger | ✅ 完成 |
 | 6P1 | 异步排行榜 (StationStatsTracker) | ✅ 完成 |
