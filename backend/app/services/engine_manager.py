@@ -31,6 +31,7 @@ class EngineManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._engine: SimulationEngine | None = None
+            cls._instance._station_stats_tracker: StationStatsTracker | None = None
             cls._instance._map_service = MapService()
         return cls._instance
 
