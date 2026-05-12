@@ -15,6 +15,10 @@ from app.core.scheduler import GreedyThresholdStrategy
 from app.core.weather import Environment
 from app.models.schemas import BikeOut, EventOut, FleetOut, SimStatusOut
 from app.services.demand_service import RuleBasedDemandService
+from app.services.leaderboard_service import (
+    StationStatsSummary,
+    StationStatsTracker,
+)
 from app.services.map_service import MapService
 
 
@@ -27,6 +31,7 @@ class EngineManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._engine: SimulationEngine | None = None
+            cls._instance._station_stats_tracker: StationStatsTracker | None = None
             cls._instance._map_service = MapService()
         return cls._instance
 
@@ -74,6 +79,10 @@ class EngineManager:
         achievement_engine = AchievementEngine(engine=self._engine)
         achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
+        # Wire StationStatsTracker (Phase 6 P1)
+        # Subscribes to EventBus "tick" events as a sibling consumer.
+        self._station_stats_tracker = StationStatsTracker()
+
     @staticmethod
     def _build_starter_fleet() -> Fleet:
         """Seed the fleet with starter bikes.
@@ -91,9 +100,18 @@ class EngineManager:
             )
         return fleet
 
+    @property
+    def station_stats_tracker(self) -> StationStatsTracker:
+        """Lazily initialised StationStatsTracker (wired in _init_engine)."""
+        if self._station_stats_tracker is None:
+            self._init_engine()
+        assert self._station_stats_tracker is not None
+        return self._station_stats_tracker
+
     def reset_engine(self, city_name: str = "Beijing") -> None:
         """Force-recreate the engine (e.g. when the user wants a fresh sim)."""
         self._engine = None
+        self._station_stats_tracker = None
         self._init_engine(city_name)
 
     # ── commands ──────────────────────────────────────────────────

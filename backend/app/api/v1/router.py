@@ -14,10 +14,12 @@ from app.models.schemas import (
     FleetOut,
     FlowLine,
     HeatmapCell,
+    LeaderboardEntryOut,
     NodeOut,
     SimConfigIn,
     SimStatusOut,
     StationOut,
+    StationStatsOut,
     ZoneOut,
 )
 from app.services.engine_manager import EngineManager
@@ -173,3 +175,59 @@ async def get_heatmap():
 async def get_flows():
     """Return OD flow lines for visualization (stub — Phase 5)."""
     return []
+
+
+# ---- Leaderboard (Phase 6 P1) ----
+
+@api_router.get("/leaderboard/stations", response_model=list[LeaderboardEntryOut])
+async def get_leaderboard(
+    sort_by: str = "trips",
+    limit: int = 10,
+):
+    """Return station leaderboard sorted by the given metric.
+
+    Args:
+        sort_by: Sort dimension — ``"trips"``, ``"revenue"``,
+                 ``"profit"``, or ``"achievements"`` (default ``"trips"``).
+        limit: Max entries to return (default 10, max 100).
+    """
+    if limit > 100:
+        limit = 100
+    if sort_by not in ("trips", "revenue", "profit", "achievements"):
+        sort_by = "trips"
+    tracker = _engine_mgr.station_stats_tracker
+    entries = tracker.get_leaderboard(sort_by=sort_by, limit=limit)  # type: ignore[arg-type]
+    return [
+        LeaderboardEntryOut(
+            station_id=e.station_id,
+            trips_completed=e.trips_completed,
+            revenue_generated=e.revenue_generated,
+            profit_contributed=e.profit_contributed,
+            achievement_count=e.achievement_count,
+            dispatch_in=e.dispatch_in,
+            dispatch_out=e.dispatch_out,
+            last_active_tick=e.last_active_tick,
+        )
+        for e in entries
+    ]
+
+
+@api_router.get("/leaderboard/stations/{station_id}", response_model=StationStatsOut)
+async def get_station_stats(station_id: str):
+    """Return detailed stats for a single station."""
+    from fastapi import HTTPException
+
+    tracker = _engine_mgr.station_stats_tracker
+    stats = tracker.get_station_stats(station_id)
+    if stats is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    return StationStatsOut(
+        station_id=stats.station_id,
+        trips_completed=stats.trips_completed,
+        revenue_generated=stats.revenue_generated,
+        profit_contributed=stats.profit_contributed,
+        achievement_count=stats.achievement_count,
+        dispatch_in=stats.dispatch_in,
+        dispatch_out=stats.dispatch_out,
+        last_active_tick=stats.last_active_tick,
+    )
