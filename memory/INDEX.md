@@ -2,3 +2,4 @@
 - [leaderboard-implementation-complete](leaderboard-implementation-complete.md) — Phase 6 P1: Async Leaderboard Implementation Complete
 - [heatmap-demand-factor-pattern](heatmap-demand-factor-pattern.md) — Phase 6 P2: Heatmap — demand_factor + Leaflet.heat
 - [phase6-complete](phase6-complete.md) — Phase 6 Complete — AchievementEngine + Leaderboard + Heatmap
+- [roadmap-md-synced-phase56](roadmap-md-synced-phase56.md) — ROADMAP.md 同步 — Phase 5/6 全部完成状态已写入
