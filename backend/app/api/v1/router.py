@@ -173,10 +173,8 @@ async def get_heatmap():
     Each cell represents a station with its demand intensity [0.0, 1.0]
     normalized by max ``trips_completed`` across all stations.
     """
-    from app.services.map_service import MapService
-
     tracker = _engine_mgr.station_stats_tracker
-    city = MapService().load_city("Beijing")
+    city = _map_service.load_city("Beijing")
     factors = tracker.get_demand_factors()
     cells: list[HeatmapCell] = []
     for sid_str, intensity in factors.items():
