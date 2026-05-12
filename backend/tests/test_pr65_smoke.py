@@ -4,15 +4,15 @@ import sys
 sys.path.insert(0, 'backend')
 
 from app.services.demand_service import TripGenerator, DemandService, RuleBasedDemandService
-from app.core.city import City, Station, LatLng, Node, Edge
+from app.core.city import City, Coord, Station, Node, Edge
 
 
 def test_rule_based_demand_generates_trips():
     rds = RuleBasedDemandService()
     stations = {
-        's1': Station('s1', LatLng(0, 0), 10, 'A'),
-        's2': Station('s2', LatLng(1, 1), 10, 'B'),
-        's3': Station('s3', LatLng(2, 2), 10, 'C'),
+        's1': Station('s1', Coord(0, 0), 10, 'A'),
+        's2': Station('s2', Coord(1, 1), 10, 'B'),
+        's3': Station('s3', Coord(2, 2), 10, 'C'),
     }
     trips = rds.generate(480, stations)  # 8am = peak
     assert len(trips) > 0, "Should generate trips during peak hours"
@@ -35,17 +35,17 @@ def test_demand_service_backward_compat():
 
 def test_shortest_path_between_stations():
     nodes = {
-        'n1': Node('n1', LatLng(0, 0)),
-        'n2': Node('n2', LatLng(0.01, 0)),
-        'n3': Node('n3', LatLng(0.02, 0.01)),
+        'n1': Node('n1', Coord(0, 0)),
+        'n2': Node('n2', Coord(0.01, 0)),
+        'n3': Node('n3', Coord(0.02, 0.01)),
     }
     edges = {
         'e1': Edge('e1', 'n1', 'n2', 1100.0),
         'e2': Edge('e2', 'n2', 'n3', 1500.0),
     }
     stations = {
-        'sA': Station('sA', LatLng(0.001, 0), 10),
-        'sB': Station('sB', LatLng(0.019, 0.009), 10),
+        'sA': Station('sA', Coord(0.001, 0), 10),
+        'sB': Station('sB', Coord(0.019, 0.009), 10),
     }
     city = City(nodes=nodes, edges=edges, stations=stations, zones={})
     dist = city.shortest_path_distance('sA', 'sB')
@@ -54,16 +54,16 @@ def test_shortest_path_between_stations():
 
 
 def test_shortest_path_same_station():
-    nodes = {'n1': Node('n1', LatLng(0, 0))}
+    nodes = {'n1': Node('n1', Coord(0, 0))}
     city = City(nodes=nodes, edges={}, stations={
-        'sA': Station('sA', LatLng(0, 0), 10),
+        'sA': Station('sA', Coord(0, 0), 10),
     }, zones={})
     assert city.shortest_path_distance('sA', 'sA') == 0.0
 
 
 def test_shortest_path_unknown_station():
     city = City(nodes={}, edges={}, stations={
-        'sA': Station('sA', LatLng(0, 0), 10),
+        'sA': Station('sA', Coord(0, 0), 10),
     }, zones={})
     assert city.shortest_path_distance('sA', 'sX') is None
 
@@ -97,8 +97,8 @@ def test_tick_events_with_rule_based_generator():
     from app.core.weather import Environment
 
     city = City(nodes={}, edges={}, stations={
-        's1': Station('s1', LatLng(0, 0), 10),
-        's2': Station('s2', LatLng(1, 1), 10),
+        's1': Station('s1', Coord(0, 0), 10),
+        's2': Station('s2', Coord(1, 1), 10),
     }, zones={})
     fleet = Fleet()
     engine = SimulationEngine(
