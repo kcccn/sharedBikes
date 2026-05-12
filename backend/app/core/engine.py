@@ -291,11 +291,15 @@ class SimulationEngine:
         pricing = PricingEngine()
         tier = self.pricing_tier
         for at in completed_trips:
+            # Check for per-station price override (Phase C)
+            station_id = at.trip.from_station
+            price_per_km = self._station_price_overrides.get(station_id)
             entry = pricing.apply(
                 trip_id=at.trip_id,
                 distance_km=at.distance_km,
                 tier=tier,
                 tick=self.tick,
+                price_per_km=price_per_km,
             )
             ledger_entries.append(entry)
 
