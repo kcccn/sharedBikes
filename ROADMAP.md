@@ -161,11 +161,11 @@ v0.5 ─── 能刷：成就 + 深度策略 🔴 下一个！
 apps/
   ├── game_cli/          # CLI 游戏入口（已有）
   ├── game_tutorial/     # 新手引导剧本（复用 game_cli 内核）
-  └── game_web/          # Web 前端（远期）
+  └── game_web/          # Web 前端（启用中 — 见 frontend/）
 
 backend/
   ├── app/
-  │   ├── api/           # API 端点
+  │   ├── api/           # API 端点（REST + WS）
   │   ├── core/          # 领域模型（City, Fleet, Engine...）
   │   ├── models/        # Pydantic DTOs
   │   ├── services/      # 应用服务（Demand, MapService...）
@@ -173,4 +173,6 @@ backend/
   │   └── visualization/ # 可视化
   ├── data/              # 城市数据文件
   └── tests/             # 测试
+
+frontend/                # React + Leaflet + TypeScript（Phase 5 MVP）
 ```
