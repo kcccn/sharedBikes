@@ -118,12 +118,13 @@ v0.5 ─── 能刷：成就 + 深度策略 🔴 下一个！
 | `Fleet` + `Bike` | 你的车队资产 | ✅ 完成 |
 | `Weather` + `SpecialEvent` | 天气/事件系统（游戏随机事件） | ✅ 完成 |
 | `Scheduler` + `BalanceService` | 调度派遣（成本中心） | 🟡 骨架 |
-| `DemandService` | NPC 需求生成（收入来源） | 🟡 骨架 |
+| `DemandService` | NPC 需求生成（收入来源） | ✅ 完成 |
 | `SimulationEngine` | 游戏时钟 + 回合推进 | ✅ 完成 |
-| `API endpoints` | 游戏后端接口 | 🟡 部分完成 |
-| — | 经济系统（定价/营收/成本） | ❌ 缺失 |
-| — | 玩家决策界面 | ❌ 缺失 |
-| — | 任务/成就系统 | ❌ 缺失 |
+| `API endpoints` | 游戏后端接口（REST + WS） | ✅ 完成 |
+| `frontend/` | Web 前端（React + Leaflet） | ✅ 完成 |
+| 经济系统（定价/营收/成本） | Phase 2 Ledger-First | ✅ 完成 |
+| — | 玩家决策界面（前端 MVP） | ✅ 完成 |
+| — | 成就/排行榜系统 | ✅ 完成 |
 
 ---
 
