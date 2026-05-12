@@ -401,6 +401,160 @@
         tooltip.style.display = 'none';
       });
 
+      // ── Phase C: Canvas click → open station panel ────────────
+      canvas.addEventListener('click', (e) => {
+        const mx = e.clientX;
+        const my = e.clientY;
+        const r = Math.max(cellSize * 0.35, 10);
+        let found = null;
+        for (const [sid, st] of stations) {
+          const sx = gridOffsetX + st.x * cellSize;
+          const sy = gridOffsetY + st.y * cellSize;
+          if (Math.hypot(mx - sx, my - sy) <= r + 4) {
+            found = { sid, ...st };
+            break;
+          }
+        }
+        if (found) {
+          openStationPanel(found.sid, found);
+        } else {
+          closeStationPanel();
+        }
+      });
+
+      // ── Phase C: Toast notification ───────────────────────────
+      function showToast(msg, type) {
+        toast.textContent = msg;
+        toast.className = 'show ' + (type || 'success');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.className = ''; }, 3000);
+      }
+
+      // ── Phase C: Send command via WS ──────────────────────────
+      let cmdCounter = 0;
+      function sendCommand(action, payload) {
+        cmdCounter++;
+        const command_id = 'cmd_fe_' + cmdCounter;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'command',
+            command_id: command_id,
+            action: action,
+            payload: payload
+          }));
+        } else {
+          showToast('WebSocket 未连接', 'error');
+        }
+      }
+
+      // ── Phase C: Format currency ──────────────────────────────
+      function fmt(n) {
+        return '\u00A5' + Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      // ── Phase C: Update dashboard UI ──────────────────────────
+      function updateDashboard(balance, time, day, profit, profitSign, alertText) {
+        playerBalance = balance;
+        const balStr = fmt(balance);
+        dashBalance.textContent = balStr;
+        toolbarBalance.textContent = balStr;
+        if (time) { simTime.textContent = time; lastTickTime = time; }
+        if (day !== undefined) { simDay.textContent = day; lastTickDay = day; }
+
+        if (profit !== undefined && profitSign !== undefined) {
+          dashProfit.textContent = (profitSign === 'positive' ? '+' : '') + fmt(profit);
+          dashProfit.className = 'profit ' + profitSign;
+        }
+
+        if (alertText) {
+          dashAlert.textContent = alertText;
+          dashAlert.style.display = 'block';
+        } else {
+          dashAlert.style.display = 'none';
+        }
+      }
+
+      // ── Phase C: Station panel ────────────────────────────────
+      function openStationPanel(sid, st) {
+        selectedStationId = sid;
+        document.getElementById('panel-title').textContent = st.name || '\u8f66\u7ad9 ' + sid;
+        document.getElementById('panel-bikes').textContent = st.bikes;
+        const effectiveCap = st.capacity + (stationCapOverrides[sid] || 0);
+        document.getElementById('panel-capacity').textContent = effectiveCap;
+        document.getElementById('panel-price').textContent = '\u00A5' + (stationPrices[sid] || 1.5) + '/km';
+
+        const slider = document.getElementById('price-slider');
+        slider.value = stationPrices[sid] || 1.5;
+        document.getElementById('price-display').textContent = slider.value;
+
+        stationPanel.style.display = 'block';
+        stationPanel.style.left = '20px';
+        stationPanel.style.top = '80px';
+      }
+
+      function closeStationPanel() {
+        stationPanel.style.display = 'none';
+        selectedStationId = null;
+      }
+
+      // Track station overrides from command results
+      const stationPrices = {};
+      const stationCapOverrides = {};
+
+      // ── Phase C: Wire panel buttons ───────────────────────────
+      document.getElementById('panel-close').addEventListener('click', closeStationPanel);
+
+      document.getElementById('price-slider').addEventListener('input', function() {
+        document.getElementById('price-display').textContent = this.value;
+      });
+      document.getElementById('btn-set-price').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const price = parseFloat(document.getElementById('price-slider').value);
+        sendCommand('set_price', { station_id: selectedStationId, new_price_per_km: price });
+        stationPrices[selectedStationId] = price;
+        document.getElementById('panel-price').textContent = '\u00A5' + price + '/km';
+        showToast('\u5df2\u63d0\u4ea4\u5b9a\u4ef7\u6307\u4ee4: ' + selectedStationId + ' \u2192 \u00A5' + price + '/km');
+      });
+
+      document.getElementById('expand-slider').addEventListener('input', function() {
+        document.getElementById('expand-display').textContent = '+' + this.value;
+      });
+      document.getElementById('btn-expand').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const addCap = parseInt(document.getElementById('expand-slider').value);
+        sendCommand('expand_station', { station_id: selectedStationId, additional_capacity: addCap });
+        const cost = addCap * 500;
+        stationCapOverrides[selectedStationId] = (stationCapOverrides[selectedStationId] || 0) + addCap;
+        document.getElementById('panel-capacity').textContent =
+          (parseInt(document.getElementById('panel-capacity').textContent) || 0) + addCap;
+        showToast('\u5df2\u63d0\u4ea4\u6269\u5bb9\u6307\u4ee4: ' + selectedStationId + ' +' + addCap + ' (\u00A5' + cost + ')');
+      });
+
+      document.getElementById('promo-duration').addEventListener('input', function() {
+        document.getElementById('promo-duration-display').textContent = this.value + 't';
+      });
+      document.getElementById('promo-boost').addEventListener('input', function() {
+        document.getElementById('promo-boost-display').textContent = this.value + 'x';
+      });
+      document.getElementById('btn-promo').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const duration = parseInt(document.getElementById('promo-duration').value);
+        const boost = parseFloat(document.getElementById('promo-boost').value);
+        sendCommand('launch_promotion', {
+          station_id: selectedStationId,
+          duration_ticks: duration,
+          demand_boost: boost
+        });
+        showToast('\u5df2\u63d0\u4ea4\u4fc3\u9500\u6307\u4ee4: ' + selectedStationId + ' x' + boost + ' ' + duration + 'tick');
+      });
+
+      // ── Phase C: Buy bikes button ─────────────────────────────
+      document.getElementById('btn-buy-bikes').addEventListener('click', function() {
+        const count = 5;
+        sendCommand('buy_bikes', { count: count });
+        showToast('\u5df2\u63d0\u4ea4\u8d2d\u8f66\u6307\u4ee4: ' + count + ' \u8f86 (\u00A5' + (count * 200) + ')');
+      });
+
       // ── Newbie guide ──────────────────────────────────────────
       const guide = document.createElement('div');
       guide.id = 'newbie-guide';
