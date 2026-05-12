@@ -6,29 +6,16 @@ Algorithm overview
    for intersection importance.
 2. Sort nodes by degree descending; higher-degree nodes make better
    station locations.
-3. Greedy placement with a minimum-distance constraint (default 300 m)
-   to avoid clustering.
+3. Greedy placement with a minimum-distance constraint to avoid clustering.
 4. Capacity is assigned proportional to node degree within configured
    bounds.
+
+All position calculations use Euclidean distance on ``Coord(x, y)``.
 """
 
 from __future__ import annotations
 
-import math
-
-from app.core.city import Edge, LatLng, Node, Station
-
-
-# ---- helpers (local copies to keep module self-contained) ----
-
-def _haversine_km(a: LatLng, b: LatLng) -> float:
-    R = 6371.0
-    dlat = math.radians(b.lat - a.lat)
-    dlng = math.radians(b.lng - a.lng)
-    sin_dlat = math.sin(dlat / 2)
-    sin_dlng = math.sin(dlng / 2)
-    h = sin_dlat * sin_dlat + math.cos(math.radians(a.lat)) * math.cos(math.radians(b.lat)) * sin_dlng * sin_dlng
-    return 2 * R * math.atan2(math.sqrt(h), math.sqrt(1 - h))
+from app.core.city import Coord, Edge, Node, Station
 
 
 # ---- public API ----
@@ -38,7 +25,7 @@ def generate_stations(
     nodes: dict[str, Node],
     edges: dict[str, Edge],
     *,
-    min_distance_km: float = 0.3,
+    min_distance: float = 0.3,
     min_capacity: int = 10,
     max_capacity: int = 50,
     max_stations: int | None = None,
@@ -51,8 +38,8 @@ def generate_stations(
         Road-network nodes keyed by node_id.
     edges:
         Road segments keyed by edge_id.  Used to compute node degree.
-    min_distance_km:
-        Minimum distance between stations in km (default 0.3 km).
+    min_distance:
+        Minimum distance between stations (default 0.3 km).
     min_capacity:
         Smallest capacity for any station.
     max_capacity:
@@ -83,12 +70,12 @@ def generate_stations(
 
     # If we have max_degree == 0 (no edges at all), fall back to spatial grid
     if not candidates or max(d for _, d in candidates) == 0:
-        return _grid_fallback(nodes, min_distance_km, min_capacity, max_capacity, max_stations)
+        return _grid_fallback(nodes, min_distance, min_capacity, max_capacity, max_stations)
 
     max_degree = candidates[0][1]
 
     # 3. Greedy placement
-    placed: list[LatLng] = []
+    placed: list[Coord] = []
     stations: dict[str, Station] = {}
     max_deg_norm = max(max_degree, 1)
 
@@ -97,9 +84,7 @@ def generate_stations(
         pos = node.position
 
         # Enforce minimum distance
-        too_close = any(
-            _haversine_km(pos, p) < min_distance_km for p in placed
-        )
+        too_close = any(pos.distance_to(p) < min_distance for p in placed)
         if too_close:
             continue
 
@@ -113,7 +98,7 @@ def generate_stations(
             station_id=station_id,
             position=pos,
             capacity=capacity,
-            name=f"Station at {pos.lat:.4f}, {pos.lng:.4f}",
+            name=f"Station at ({pos.x:.1f}, {pos.y:.1f})",
         )
         placed.append(pos)
 
@@ -125,7 +110,7 @@ def generate_stations(
 
 def _grid_fallback(
     nodes: dict[str, Node],
-    min_distance_km: float,
+    min_distance: float,
     min_capacity: int,
     max_capacity: int,
     max_stations: int | None,
@@ -135,23 +120,21 @@ def _grid_fallback(
     if not nodes:
         return {}
 
-    # Simple spatial subsampling: sort by lat then greedily place
-    sorted_nodes = sorted(nodes.values(), key=lambda n: (n.position.lat, n.position.lng))
+    # Simple spatial subsampling: sort by x then greedily place
+    sorted_nodes = sorted(nodes.values(), key=lambda n: (n.position.x, n.position.y))
 
-    placed: list[LatLng] = []
+    placed: list[Coord] = []
     stations: dict[str, Station] = {}
     for node in sorted_nodes:
         pos = node.position
-        too_close = any(
-            _haversine_km(pos, p) < min_distance_km for p in placed
-        )
+        too_close = any(pos.distance_to(p) < min_distance for p in placed)
         if too_close:
             continue
         stations[f"station-auto-{node.node_id}"] = Station(
             station_id=f"station-auto-{node.node_id}",
             position=pos,
             capacity=(min_capacity + max_capacity) // 2,
-            name=f"Station at {pos.lat:.4f}, {pos.lng:.4f}",
+            name=f"Station at ({pos.x:.1f}, {pos.y:.1f})",
         )
         placed.append(pos)
         if max_stations is not None and len(stations) >= max_stations:
