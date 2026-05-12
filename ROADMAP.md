@@ -59,17 +59,17 @@
 
 ## 🏗️ 执行路线
 
-### Phase A — 后端抽象化（当前执行中）
+### Phase A — 后端抽象化（已完成 ✅）
 
 | 任务 | 描述 | 状态 |
 |------|------|------|
-| A1 | `Coord(x, y)` 类型 — 替代 3 处 LatLng 定义 | 🔄 |
-| A2 | `city.py` 中 LatLng → Coord，`_haversine_km` → 欧几里得距离 | 🔄 |
-| A3 | `geo.py` 所有函数替换为基于 Coord 的简单几何运算 | 🔄 |
-| A4 | `fleet.py` 中 LatLng → Coord | 🔄 |
-| A5 | `ProceduralCityGenerator` — 基于 seed 生成抽象网格城市 | 🔄 |
-| A6 | 重写 `map_service.py` — ProceduralCityGenerator 为主路径，砍掉 OSM | 🔄 |
-| A7 | 更新所有受影响的后端测试 | 🔄 |
+| A1 | `Coord(x, y)` 类型 — 替代 3 处 LatLng 定义 | ✅ |
+| A2 | `city.py` 中 LatLng → Coord，`_haversine_km` → 欧几里得距离 | ✅ |
+| A3 | `geo.py` 所有函数替换为基于 Coord 的简单几何运算 | ✅ |
+| A4 | `fleet.py` 中 LatLng → Coord | ✅ |
+| A5 | `ProceduralCityGenerator` — 基于 seed 生成抽象网格城市 | ✅ |
+| A6 | 重写 `map_service.py` — ProceduralCityGenerator 为主路径，砍掉 OSM | ✅ |
+| A7 | 更新所有受影响的后端测试 | ✅ |
 
 **影响范围：** 仅后端抽象层。经济/调度/需求/成就/排行榜引擎层**零改动**。
 
