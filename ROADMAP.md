@@ -31,8 +31,8 @@
 | 后端语言 | Python ≥ 3.11 | ✅ 确定 |
 | Web 框架 | FastAPI | ✅ 确定 |
 | 数据验证 | Pydantic v2 | ✅ 确定 |
-| 坐标系统 | `Coord(x, y)` — 抽象网格坐标 | 🔄 执行中 (Phase A) |
-| 城市生成 | `ProceduralCityGenerator` — seed 驱动 | 🔄 执行中 (Phase A) |
+| 坐标系统 | `Coord(x, y)` — 抽象网格坐标 | ✅ 完成 |
+| 城市生成 | `ProceduralCityGenerator` — seed 驱动 | ✅ 完成 |
 | 地图路网 | ~~OSMnx + NetworkX~~ → 过程化生成 | ❌ 废弃 |
 | 配置 | TOML (pydantic-settings) | ✅ 确定 |
 | 前端渲染 | Canvas 抽象渲染 | ⏳ 待建 (Phase B) |
