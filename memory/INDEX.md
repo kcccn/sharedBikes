@@ -8,3 +8,4 @@
 - [phase-a-abstract-coord-complete](phase-a-abstract-coord-complete.md) — Phase A Complete — Abstract Coord + ProceduralCityGenerator
 - [procedural-config-wiring-pattern](procedural-config-wiring-pattern.md) — ProceduralCityGenerator must read grid params from CityConfig.procedural
 - [phase-b-canvas-frontend-dispatched](phase-b-canvas-frontend-dispatched.md) — Phase 7B Complete — Canvas Frontend Replaces Leaflet
+- [architecture-doc-phase7b-complete](architecture-doc-phase7b-complete.md) — Architecture doc updated — Phase 7B marked complete
