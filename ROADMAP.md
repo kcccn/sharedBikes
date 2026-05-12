@@ -27,7 +27,7 @@
 | 数据验证 | Pydantic v2 | ✅ 确定 |
 | 地图路网 | OSMnx + NetworkX | ✅ 确定 |
 | 配置 | TOML (pydantic-settings) | ✅ 确定 |
-| 前端 | Web（待定） | 🔮 远期 |
+| 前端 | React + Leaflet + TypeScript | ✅ 完成 (`frontend/`) |
 | 领域架构 | 领域驱动分层 | ✅ 确定 |
 
 ---
