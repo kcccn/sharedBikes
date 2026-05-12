@@ -114,7 +114,9 @@ async def simulation_ws(websocket: WebSocket) -> None:
         # ── Forward tick events ──────────────────────────────────
         while True:
             event: TickEvents = await queue.get()
-            payload = _serialize_tick(event)
+            # Inject demand_factors from StationStatsTracker (Phase 6 P2)
+            factors = mgr.station_stats_tracker.get_demand_factors()
+            payload = _serialize_tick(event, demand_factors=factors)
             await websocket.send_json(payload)
     except WebSocketDisconnect:
         pass  # normal disconnect
