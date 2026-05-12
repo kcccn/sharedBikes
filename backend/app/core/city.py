@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import cached_problem
+from functools import cached_property
 from typing import NamedTuple
 
 import networkx as nx
