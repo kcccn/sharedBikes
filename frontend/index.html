@@ -68,6 +68,9 @@
       let stationNames = {};
       const stationCapacities = new Map();
 
+      // ── Heatmap layer (Phase 6 P2) ────────────────────────────
+      let heatLayer = null;
+
       function getIcon(bikes, capacity) {
         const ratio = capacity > 0 ? bikes / capacity : 0;
         let color;
