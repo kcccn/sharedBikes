@@ -614,21 +614,25 @@
               stations.set(st.station_id, {
                 x: st.x,
                 y: st.y,
-                name: st.name || `车站 #${st.station_id}`,
+                name: st.name || '\u8f66\u7ad9 #' + st.station_id,
                 capacity: st.capacity,
                 bikes: 0,
               });
             }
 
+            // Phase C: initial balance from bootstrap
+            if (msg.balance !== undefined) {
+              updateDashboard(msg.balance, '--:--', 0, 0, 'positive', '');
+            }
+
             resize();
 
-            statusBar.textContent = `🟢 已连接 — ${stations.size} 个站点 (网格 ${gridCols}×${gridRows})`;
+            statusBar.textContent = '\uD83D\uDFE2 \u5df2\u8fde\u63a5 \u2014 ' + stations.size + ' \u4e2a\u7ad9\u70b9 (\u7f51\u683c ' + gridCols + '\u00D7' + gridRows + ')';
           } else if (msg.type === 'tick') {
             // ── Tick: update station bikes & heatmap ──
             const inv = msg.station_inventory || {};
             for (const [sidStr, bikes] of Object.entries(inv)) {
-              const sid = Number(sidStr);
-              const st = stations.get(sid);
+              const st = stations.get(sidStr);
               if (st) {
                 st.bikes = bikes;
               }
@@ -638,13 +642,45 @@
             demandFactors.clear();
             if (msg.demand_factors) {
               for (const [sidStr, factor] of Object.entries(msg.demand_factors)) {
-                demandFactors.set(Number(sidStr), factor);
+                demandFactors.set(sidStr, factor);
               }
             }
 
             draw();
 
-            statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
+            // ── Phase C: Update dashboard with balance & daily report ──
+            const bal = msg.balance !== undefined ? msg.balance : playerBalance;
+            const rep = msg.daily_report;
+            let day = lastTickDay;
+            let profitVal = 0;
+            let profitSign = 'positive';
+            let alertText = '';
+            if (rep) {
+              day = rep.day;
+              profitVal = rep.profit_today;
+              profitSign = profitVal >= 0 ? 'positive' : 'negative';
+              alertText = rep.alert || '';
+
+              // Update daily report in toolbar
+              document.getElementById('report-revenue').textContent = fmt(rep.revenue_today);
+              document.getElementById('report-costs').textContent = fmt(rep.costs_today);
+              document.getElementById('report-profit').textContent = (profitVal >= 0 ? '+' : '') + fmt(profitVal);
+              document.getElementById('report-profit').style.color = profitVal >= 0 ? '#28a745' : '#dc3545';
+              document.querySelector('#daily-report .day').textContent = 'Day ' + rep.day;
+            }
+            updateDashboard(bal, msg.time, day, profitVal, profitSign, alertText);
+
+            statusBar.textContent = '\uD83D\uDFE2 Tick #' + msg.tick + ' \u2014 ' + (msg.time || '') + ' \u2014 ' + fmt(bal);
+          } else if (msg.type === 'command_result') {
+            // ── Phase C: Command result feedback ──
+            if (msg.success) {
+              showToast('\u2705 ' + msg.message, 'success');
+              if (msg.new_balance !== undefined) {
+                updateDashboard(msg.new_balance, lastTickTime, lastTickDay, 0, 'positive', '');
+              }
+            } else {
+              showToast('\u274C ' + msg.message, 'error');
+            }
           }
         };
 
