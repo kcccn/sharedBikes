@@ -130,8 +130,72 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="dashboard">
+    <div>⏰ <span class="time" id="sim-time">--:--</span> &nbsp; Day <span id="sim-day">0</span></div>
+    <div class="balance" id="dash-balance">¥10,000</div>
+    <div class="profit" id="dash-profit"></div>
+    <div class="alert" id="dash-alert" style="display:none"></div>
+  </div>
   <div id="status-bar" class="disconnected">⏳ 连接中…</div>
   <div id="tooltip"></div>
+
+  <!-- Phase C: Station action panel -->
+  <div id="station-panel">
+    <button class="close-btn" id="panel-close">&times;</button>
+    <h3 id="panel-title">车站</h3>
+    <div class="info-row"><span class="label">可用车辆</span><span class="value" id="panel-bikes">0</span></div>
+    <div class="info-row"><span class="label">容量</span><span class="value" id="panel-capacity">0</span></div>
+    <div class="info-row"><span class="label">当前价格</span><span class="value" id="panel-price">¥1.5/km</span></div>
+
+    <div class="action-group">
+      <label>调价 (¥/km): <span class="range-value" id="price-display">1.5</span></label>
+      <input type="range" id="price-slider" min="0.5" max="10" step="0.5" value="1.5">
+      <button id="btn-set-price">确认定价</button>
+    </div>
+
+    <div class="action-group">
+      <label>扩容 (成本 <span class="cost-hint">¥500/单位</span>)</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="range" id="expand-slider" min="1" max="20" step="1" value="5" style="flex:1">
+        <span class="range-value" id="expand-display">+5</span>
+      </div>
+      <button id="btn-expand">扩容</button>
+    </div>
+
+    <div class="action-group">
+      <label>促销 <span class="cost-hint">¥300 + ¥50/10tick</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:#aaa">持续:</span>
+        <input type="range" id="promo-duration" min="10" max="1440" step="10" value="120" style="flex:1">
+        <span class="range-value" id="promo-duration-display">120t</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <span style="font-size:12px;color:#aaa">倍率:</span>
+        <input type="range" id="promo-boost" min="1.0" max="5.0" step="0.5" value="1.5" style="flex:1">
+        <span class="range-value" id="promo-boost-display">1.5x</span>
+      </div>
+      <button id="btn-promo" class="danger">启动促销</button>
+    </div>
+  </div>
+
+  <!-- Phase C: Global toolbar -->
+  <div id="toolbar">
+    <div>
+      <div>💰 玩家资金</div>
+      <div class="big-balance" id="toolbar-balance">¥10,000.00</div>
+    </div>
+    <div>
+      <button id="btn-buy-bikes">🚲 购买单车</button>
+      <div class="buy-cost">成本: ¥200/辆</div>
+    </div>
+    <div class="daily-report" id="daily-report">
+      <div class="day">Day 1</div>
+      <div>收入: <span id="report-revenue">¥0</span> / 成本: <span id="report-costs">¥0</span></div>
+      <div>利润: <span id="report-profit">¥0</span></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
 
   <script>
     (function() {
