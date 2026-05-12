@@ -79,6 +79,10 @@ class EngineManager:
         achievement_engine = AchievementEngine(engine=self._engine)
         achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
+        # Wire StationStatsTracker (Phase 6 P1)
+        # Subscribes to EventBus "tick" events as a sibling consumer.
+        self._station_stats_tracker = StationStatsTracker()
+
     @staticmethod
     def _build_starter_fleet() -> Fleet:
         """Seed the fleet with starter bikes.
