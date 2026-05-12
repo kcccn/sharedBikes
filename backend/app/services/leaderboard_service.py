@@ -75,16 +75,6 @@ class StationStatsSummary:
     last_active_tick: int
 
 
-# ── station revenue attribution keys ────────────────────────────
-
-# RevenueCategory values whose entries can be attributed to a station
-_STATION_REVENUE_CATEGORIES = {
-    RevenueCategory.TRIP_INCOME,
-    RevenueCategory.DISPATCH_FEE,
-    RevenueCategory.ACHIEVEMENT,
-}
-
-
 class StationStatsTracker:
     """Subscribe to EventBus tick events and maintain per-station stats.
 
