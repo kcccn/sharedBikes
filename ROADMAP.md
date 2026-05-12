@@ -73,14 +73,14 @@
 
 **影响范围：** 仅后端抽象层。经济/调度/需求/成就/排行榜引擎层**零改动**。
 
-### Phase B — 前端 Canvas 迁移（待启动）
+### Phase B — 前端 Canvas 迁移（已完成 ✅）
 
 | 任务 | 描述 | 状态 |
 |------|------|------|
-| B1 | Canvas 抽象城市地图渲染器 | ⏳ |
-| B2 | 节点/连线/车辆动画渲染 | ⏳ |
-| B3 | ~~Leaflet.heat~~ → canvas-based 热力图 | ⏳ |
-| B4 | WebSocket 事件流适配 | ⏳ |
+| B1 | Canvas 抽象城市地图渲染器 | ✅ |
+| B2 | 节点/连线/车辆动画渲染 | ✅ |
+| B3 | ~~Leaflet.heat~~ → canvas-based 热力图 | ✅ |
+| B4 | WebSocket 事件流适配 | ✅ |
 
 **注意：** Phase B 依赖 Phase A 完成后才能启动。
 
