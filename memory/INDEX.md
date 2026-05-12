@@ -3,3 +3,4 @@
 - [heatmap-demand-factor-pattern](heatmap-demand-factor-pattern.md) — Phase 6 P2: Heatmap — demand_factor + Leaflet.heat
 - [phase6-complete](phase6-complete.md) — Phase 6 Complete — AchievementEngine + Leaderboard + Heatmap
 - [roadmap-md-synced-phase56](roadmap-md-synced-phase56.md) — ROADMAP.md 同步 — Phase 5/6 全部完成状态已写入
+- [abstract-coord-architecture-decision](abstract-coord-architecture-decision.md) — Phase 7: Abstract Coord Architecture — No Fake Realism
