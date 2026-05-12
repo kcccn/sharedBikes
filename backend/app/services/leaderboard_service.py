@@ -134,7 +134,7 @@ class StationStatsTracker:
                 sid = at.trip.to_station
                 stats = self._stats.setdefault(sid, StationStats(station_id=sid))
                 stats.revenue_generated += revenue_per_trip
-                stats.profit_contributed += revenue_per_trip  # profit ≈ revenue for now
+                stats.profit_contributed += revenue_per_trip  # TODO(#136): profit needs cost attribution — currently approximated as revenue
 
         # --- Attribute achievement entries to stations ---
         # ACHIEVEMENT entries don't have station_id, so we count them
