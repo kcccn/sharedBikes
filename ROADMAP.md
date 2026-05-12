@@ -1,14 +1,16 @@
 # 🗺️ CityBike-Sim 架构路线图
 
-> 共享单车运营模拟经营游戏
+> **抽象坐标 · 过程化城市 · 无虚假现实主义**
+>
+> 共享单车运营模拟经营游戏 — 受 Mini Metro / OpenTTD 启发
 
 ---
 
-## 游戏定位
+## 🎯 游戏定位
 
-**共享单车运营模拟经营游戏** ≠ 数据分析平台。
+**共享单车运营模拟经营游戏** ≠ 数据分析平台，≠ 真实地图模拟器。
 
-玩家扮演共享单车公司 CEO，做战略决策，看财务回报。
+玩家扮演共享单车公司 CEO，在抽象棋盘城市上做战略决策，看财务回报。
 
 ```
 ┌───────────────────────────────────────────────────┐
@@ -18,162 +20,129 @@
 └───────────────────────────────────────────────────┘
 ```
 
-## 技术栈
+**核心理念：不做虚假的真实感。** 没有真实寻路、没有真实停车点数据时，保留 Leaflet/OSM 只是维持"看起来像地图"的幻觉。抽象棋盘更诚实、更可玩、迭代更快。
+
+---
+
+## 🧱 技术栈
 
 | 层 | 技术 | 状态 |
 |----|------|------|
 | 后端语言 | Python ≥ 3.11 | ✅ 确定 |
 | Web 框架 | FastAPI | ✅ 确定 |
 | 数据验证 | Pydantic v2 | ✅ 确定 |
-| 地图路网 | OSMnx + NetworkX | ✅ 确定 |
+| 坐标系统 | `Coord(x, y)` — 抽象网格坐标 | 🔄 执行中 (Phase A) |
+| 城市生成 | `ProceduralCityGenerator` — seed 驱动 | 🔄 执行中 (Phase A) |
+| 地图路网 | ~~OSMnx + NetworkX~~ → 过程化生成 | ❌ 废弃 |
 | 配置 | TOML (pydantic-settings) | ✅ 确定 |
-| 前端 | Web（待定） | 🔮 远期 |
+| 前端渲染 | Canvas 抽象渲染 | ⏳ 待建 (Phase B) |
+| ~~前端~~ | ~~Leaflet 瓦片地图~~ | ❌ 废弃 |
 | 领域架构 | 领域驱动分层 | ✅ 确定 |
 
 ---
 
-## 架构依赖顺序（不变承诺）
+## 📐 架构承诺（不变）
 
-以下按**架构依赖顺序**排列。前一个做完，后一个才能开工——这不是优先级排序，是拓扑排序。
-
-```
-▸ 底层基础设施（City 能力补齐）
-  ├── City.shortest_path(a, b)           ← 50 行，NetworkX 寻路
-  ├── _tick() 返回 TickEvents            ← 30 行，事件化改造
-  ├── DemandService 接口改造 + 注入引擎   ← 20 行
-  ├── RuleBasedDemandService (MVP)       ← 20 行，基础 trip 生成
-  └── Wire API → SimulationEngine        ← 30 行，接线
-
-▸ 经济系统骨架（定价 + 营收 + 成本）
-  ├── PricingTier 领域模型
-  ├── RevenueRecord / CostItem / FinancialReport
-  └── 模拟结算管线（每个 tick 计算收支）
-
-▸ NPC 需求引擎（基于真实路网的通勤潮汐）
-  ├── Commuter / Shopper / Tourist 行为模型
-  ├── OD 配对 + 路径距离计算（依赖 shortest_path）
-  └── 潮汐效应（早/晚高峰）
-
-▸ 调度博弈系统（玩家决策层）
-  ├── DispatchOrder / DispatchFleet 模型
-  ├── 手动调度命令（玩家触发）
-  └── AI 调度建议（可选采纳）
-
-▸ 前端接入
-  ├── WebSocket 事件流（基于 TickEvents）
-  ├── 地图视图（Mapbox/Leaflet）
-  └── 决策面板 UI
-```
-
-### 验收标准
-
-每个架构里程碑的验收条件只有一条：
-
-> **这个模块可以被独立测试，且测试不依赖 mock。**
->
-> 例如：`shortest_path()` 的测试不 mock City，直接加载临安市路网实测。
-
----
-
-## 产品交付路线图（v0.x）
-
-每个 v0.x 版本都是一个可以**完整玩一轮**的游戏（虽然简陋）。
-
-```
-v0.1 ─── 能看：地图 + 仪表盘 ✅ 已有骨架
-         CLI 显示城市地图、站点、车辆分布
-         玩家能感知到"这是一个真实城市"
-
-v0.2 ─── 能跑：核心游戏循环 🔴 下一个！
-         ① 新手引导（选城市 → 定价 → 购车）
-         ② 模拟运行（30 天 tick-by-tick）
-         ③ 每日日报（营收 + 满意度 + 预警）
-         ④ 第 30 天结算 + CEO 评分
-        
-v0.3 ─── 能玩：NPC + 调度决策 🔴 关键！
-         ⑤ NPC 通勤潮汐（早高峰→晚高峰）
-         ⑥ 玩家可派遣调度车（手动 + AI 建议）
-         ⑦ 调度成本 vs 满意度的 trade-off
-        
-v0.4 ─── 能赢：深度策略
-         ⑧ 完整财报（利润表/现金流量表）
-         ⑨ 多城市扩张决策
-         ⑩ 天气/事件对运营的影响
-        
-v0.5 ─── 能炫：Web 前端
-         ⑪ 地图热力图 + 车辆动画
-         ⑫ 拖拽式调度操作
-         ⑬ 可视化仪表盘
-        
-v1.0 ─── 能刷：成就 + 剧本
-         ⑭ 成就系统 + 排行榜
-         ⑮ 挑战剧本模式
-         ⑯ 沙盒模式
-```
-
----
-
-## 现有资产 → 游戏化映射
-
-| 现有模块 | 游戏中扮演的角色 | 状态 |
-|---------|----------------|------|
-| `City` + OSM 路网 | 游戏地图（棋盘） | ✅ 完成 |
-| `Station` | 可建设的停车点 | ✅ 完成 |
-| `Fleet` + `Bike` | 你的车队资产 | ✅ 完成 |
-| `Weather` + `SpecialEvent` | 天气/事件系统（游戏随机事件） | ✅ 完成 |
-| `Scheduler` + `BalanceService` | 调度派遣（成本中心） | 🟡 骨架 |
-| `DemandService` | NPC 需求生成（收入来源） | 🟡 骨架 |
-| `SimulationEngine` | 游戏时钟 + 回合推进 | ✅ 完成 |
-| `API endpoints` | 游戏后端接口 | 🟡 部分完成 |
-| — | 经济系统（定价/营收/成本） | ❌ 缺失 |
-| — | 玩家决策界面 | ❌ 缺失 |
-| — | 任务/成就系统 | ❌ 缺失 |
-
----
-
-## 当前架构前提条件（Architecture Prerequisites）
-
-以下基础设施项是**跨 Phase 的隐性依赖**，必须在下个 Phase 开始前完成：
-
-| # | 项目 | 行数 | 依赖方 | 说明 |
-|---|------|------|--------|------|
-| 1 | `City.shortest_path()` | ~50 | Phase 3 NPC 通勤 | NetworkX 图已存在但未暴露寻路能力 |
-| 2 | `_tick()` → `TickEvents` | ~30 | Phase 2-6 全部 | 事件化改造使测试/回放/分析成为可能 |
-| 3 | `DemandService.generate()` 接口改造 | ~20 | Phase 2 经济系统 | 需要接收 stations 参数并注入 Engine |
-| 4 | `RuleBasedDemandService` (MVP) | ~20 | v0.2 冷启动 | 避免首次体验全零报表 |
-| 5 | Wire API → Engine | ~30 | 跨 Phase | 模拟端点硬编码 stub，需接入真实引擎 |
-| 6 | `TripRequest` 站 ID 守卫 | ~10 | Phase 2/3 | 避免 KeyError 静默崩溃 |
-
----
-
-## 已决策（不再变更）
+以下架构原则**不随方向变化**：
 
 | 承诺 | 依据 |
 |------|------|
 | ✅ 游戏类型：共享单车运营模拟经营 | 已有 City + Fleet + Station 三层领域模型 |
-| ✅ 技术栈：Python + FastAPI + OSM | 已有完整实现 |
+| ✅ 技术栈：Python + FastAPI | 已有完整实现 |
 | ✅ 领域驱动分层 | `domain/` `application/` `infrastructure/` 三层清晰 |
-| ✅ Phase 1 成果（地图解析 + 布站 + 配置） | 已测试通过，不可逆 |
-| ❌ 变的东西：具体功能上线顺序 | 取决于人力/反馈，但架构依赖顺序不变 |
+| ✅ Coord 抽象坐标 | 替换 LatLng，3 处重复定义合并为 1 处 |
+| ✅ ProceduralCityGenerator | 替换 OSM 解析，seed 驱动，无地理约束 |
+| ❌ LatLng / OSM / Leaflet | 全面废弃 — 不做虚假的真实感 |
+| ❌ 两层抽象折中 | 不做"同时支持真实和抽象"——全面抽象一次性到位 |
 
 ---
 
-## 项目结构（建议）
+## 🏗️ 执行路线
+
+### Phase A — 后端抽象化（当前执行中）
+
+| 任务 | 描述 | 状态 |
+|------|------|------|
+| A1 | `Coord(x, y)` 类型 — 替代 3 处 LatLng 定义 | 🔄 |
+| A2 | `city.py` 中 LatLng → Coord，`_haversine_km` → 欧几里得距离 | 🔄 |
+| A3 | `geo.py` 所有函数替换为基于 Coord 的简单几何运算 | 🔄 |
+| A4 | `fleet.py` 中 LatLng → Coord | 🔄 |
+| A5 | `ProceduralCityGenerator` — 基于 seed 生成抽象网格城市 | 🔄 |
+| A6 | 重写 `map_service.py` — ProceduralCityGenerator 为主路径，砍掉 OSM | 🔄 |
+| A7 | 更新所有受影响的后端测试 | 🔄 |
+
+**影响范围：** 仅后端抽象层。经济/调度/需求/成就/排行榜引擎层**零改动**。
+
+### Phase B — 前端 Canvas 迁移（待启动）
+
+| 任务 | 描述 | 状态 |
+|------|------|------|
+| B1 | Canvas 抽象城市地图渲染器 | ⏳ |
+| B2 | 节点/连线/车辆动画渲染 | ⏳ |
+| B3 | ~~Leaflet.heat~~ → canvas-based 热力图 | ⏳ |
+| B4 | WebSocket 事件流适配 | ⏳ |
+
+**注意：** Phase B 依赖 Phase A 完成后才能启动。
+
+---
+
+## 📦 核心引擎（不动）
+
+以下模块在方向变更中**零改动**：
+
+| 模块 | 原因 |
+|------|------|
+| 经济系统 (Phase 2) | 纯账本，与坐标无关 |
+| 调度引擎 (Phase 3) | 只要 `distance` 抽象接口不变，核心逻辑不变 |
+| 需求引擎 (Phase 4) | 车站供需运算，不关心车站画成什么样子 |
+| EventBus (Phase 4.5) | 纯消息基础设施 |
+| 成就系统 (Phase 6 P0) | 事件驱动，零 UI 依赖 |
+| 排行榜 (Phase 6 P1) | 纯后端异步计算 |
+| 热力图后端 (Phase 6 P2) | demand_factor 数据计算不变，仅前端渲染方式变 |
+
+---
+
+## 📋 产品交付路线图（v0.x）
+
+| 版本 | 主题 | 关键交付物 | 状态 |
+|------|------|-----------|------|
+| v0.1 | **抽象骨架** | Coord 系统 · ProceduralCityGenerator · 后端测试通过 | 🔄 Phase A |
+| v0.2 | **能看** | Canvas 抽象城市地图 · 节点/连线/车辆可视化 | ⏳ |
+| v0.3 | **能玩** | 游戏循环 · 玩家决策（定价/购车/扩区） | ⏳ |
+| v0.4 | **能赢** | NPC 通勤 · 调度成本 vs 满意度 trade-off | ⏳ |
+| v0.5 | **能炫** | 成就系统 · 排行榜 · 沙盒模式 · 挑战剧本 | ⏳ |
+| v1.0 | **能刷** | 多城市 · 随机事件 · 深度策略 | ⏳ |
+
+---
+
+## 🗺️ 项目结构（目标）
 
 ```
-apps/
-  ├── game_cli/          # CLI 游戏入口（已有）
-  ├── game_tutorial/     # 新手引导剧本（复用 game_cli 内核）
-  └── game_web/          # Web 前端（远期）
-
 backend/
   ├── app/
-  │   ├── api/           # API 端点
-  │   ├── core/          # 领域模型（City, Fleet, Engine...）
-  │   ├── models/        # Pydantic DTOs
-  │   ├── services/      # 应用服务（Demand, MapService...）
-  │   ├── utils/         # 工具函数
-  │   └── visualization/ # 可视化
-  ├── data/              # 城市数据文件
-  └── tests/             # 测试
+  │   ├── api/              # API 端点
+  │   ├── core/             # 领域模型 (City, Coord, Fleet, Engine...)
+  │   ├── models/           # Pydantic DTOs
+  │   ├── services/         # 应用服务 (Demand, MapService, CityGenerator...)
+  │   ├── utils/            # 工具函数 (geo.py → coord.py)
+  │   └── visualization/    # 可视化（保留）
+  ├── data/                 # 城市种子配置
+  └── tests/                # 测试
+
+frontend/                   # Canvas 前端（Phase B）
+  ├── src/
+  │   ├── renderer/         # 抽象地图渲染器
+  │   ├── game/             # 游戏状态管理
+  │   └── ui/               # 决策面板 UI
+  └── ...
 ```
+
+---
+
+## 📝 已决策的记录
+
+| 决策 | 来源 | 日期 |
+|------|------|------|
+| 全面抽象坐标，废弃 OSM/LatLng/Leaflet | [#139](https://github.com/kcccn/sharedBikes/issues/139) | 2026-05-12 |
+| 不做两层抽象折中 | [#139](https://github.com/kcccn/sharedBikes/issues/139) | 2026-05-12 |
+| 核心引擎层不动 | [#139](https://github.com/kcccn/sharedBikes/issues/139) | 2026-05-12 |
