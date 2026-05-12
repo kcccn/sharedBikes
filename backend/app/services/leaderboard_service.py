@@ -229,6 +229,23 @@ class StationStatsTracker:
             last_active_tick=stats.last_active_tick,
         )
 
+    # ── demand factors (Phase 6 P2 Heatmap) ─────────────────────
+
+    def get_demand_factors(self) -> dict[str, float]:
+        """Return per-station demand_factor normalized by max ``trips_completed``.
+
+        Returns:
+            Dict mapping ``station_id`` to a float in [0.0, 1.0], where
+            1.0 = the station with the most completed trips (hottest),
+            0.0 = no trips recorded. ``max_trips`` is 0 → all factors are 0.0.
+        """
+        if not self._stats:
+            return {}
+        max_trips = max(s.trips_completed for s in self._stats.values())
+        if max_trips == 0:
+            return {sid: 0.0 for sid in self._stats}
+        return {sid: s.trips_completed / max_trips for sid, s in self._stats.items()}
+
     @property
     def station_count(self) -> int:
         """Number of stations with recorded activity."""

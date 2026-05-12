@@ -7,6 +7,8 @@
   <!-- Leaflet from CDN -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet.heat for heatmap layer (Phase 6 P2) -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
@@ -65,6 +67,9 @@
       const markers = new Map();
       let stationNames = {};
       const stationCapacities = new Map();
+
+      // ── Heatmap layer (Phase 6 P2) ────────────────────────────
+      let heatLayer = null;
 
       function getIcon(bikes, capacity) {
         const ratio = capacity > 0 ? bikes / capacity : 0;
@@ -142,6 +147,13 @@
 
               markers.set(st.station_id, marker);
             }
+
+            // ── Initialise heatmap layer (Phase 6 P2) ──
+            heatLayer = L.heatLayer([], {
+              radius: 28, blur: 18, maxZoom: 17,
+              gradient: { 0.0: 'blue', 0.3: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' },
+            }).addTo(map);
+
             statusBar.textContent = `🟢 已连接 — ${markers.size} 个站点`;
           } else if (msg.type === 'tick') {
             // ── Tick: update marker icons & popups ──
@@ -152,6 +164,20 @@
               if (!marker) continue;
               const capacity = stationCapacities.get(sid) ?? 20;
               updateMarker(sid, bikes, capacity);
+            }
+
+            // ── Update heatmap layer (Phase 6 P2) ──
+            if (heatLayer && msg.demand_factors) {
+              const heatPoints = [];
+              for (const [sidStr, factor] of Object.entries(msg.demand_factors)) {
+                const sid = Number(sidStr);
+                const marker = markers.get(sid);
+                if (marker && factor > 0) {
+                  const latlng = marker.getLatLng();
+                  heatPoints.push([latlng.lat, latlng.lng, factor]);
+                }
+              }
+              heatLayer.setLatLngs(heatPoints);
             }
             statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
           }

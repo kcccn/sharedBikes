@@ -285,3 +285,62 @@ class TestStationStatsTracker:
         tracker = StationStatsTracker()
         EventBus().publish("tick", "not_a_tick_event")
         assert tracker.station_count == 0
+
+    # ── get_demand_factors (Phase 6 P2 Heatmap) ──────────────────
+
+    def test_demand_factors_empty_when_no_stats(self) -> None:
+        """get_demand_factors returns empty dict when no stations tracked."""
+        assert self.tracker.get_demand_factors() == {}
+
+    def test_demand_factors_all_zero_when_max_trips_zero(self) -> None:
+        """All factors are 0.0 when no station has completed trips."""
+        # StationStatsTracker tracks dispatch movements too, which create
+        # StationStats objects with trips_completed=0
+        movements = [("S1", "S2", 1)]
+        event = _make_tick_event(tick=1, dispatch_movements=movements)
+        self.tracker._on_tick(event)
+
+        factors = self.tracker.get_demand_factors()
+        assert len(factors) == 2
+        assert factors["S1"] == 0.0
+        assert factors["S2"] == 0.0
+
+    def test_demand_factors_single_station(self) -> None:
+        """Single station with trips returns factor 1.0."""
+        trip = _FakeTrip(from_station="S1", to_station="S2")
+        event = _make_tick_event(tick=1, completed_trips=[trip])
+        self.tracker._on_tick(event)
+
+        factors = self.tracker.get_demand_factors()
+        assert len(factors) == 1
+        assert factors["S2"] == 1.0
+
+    def test_demand_factors_normalized_by_max(self) -> None:
+        """Factors are normalized by the max trips_completed across stations."""
+        trips_t1 = [_FakeTrip(from_station="S1", to_station="S3", trip_id="t1")]
+        trips_t2 = [
+            _FakeTrip(from_station="S1", to_station="S2", trip_id="t2"),
+            _FakeTrip(from_station="S3", to_station="S2", trip_id="t3"),
+            _FakeTrip(from_station="S4", to_station="S2", trip_id="t4"),
+        ]
+        self.tracker._on_tick(_make_tick_event(tick=1, completed_trips=trips_t1))
+        self.tracker._on_tick(_make_tick_event(tick=2, completed_trips=trips_t2))
+
+        factors = self.tracker.get_demand_factors()
+        # S2: 3 trips (max), S3: 1 trip
+        assert len(factors) == 2
+        assert factors["S2"] == 1.0   # max
+        assert factors["S3"] == 1.0 / 3.0  # 1/3 of max
+
+    def test_demand_factors_values_in_range(self) -> None:
+        """All demand factor values are in [0.0, 1.0]."""
+        trips = [
+            _FakeTrip(from_station=f"S{i}", to_station=f"S{i+1}", trip_id=f"t{i}")
+            for i in range(5)
+        ]
+        event = _make_tick_event(tick=1, completed_trips=trips)
+        self.tracker._on_tick(event)
+
+        factors = self.tracker.get_demand_factors()
+        for v in factors.values():
+            assert 0.0 <= v <= 1.0

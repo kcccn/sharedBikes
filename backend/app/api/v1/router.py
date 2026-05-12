@@ -167,8 +167,25 @@ async def get_events():
 
 @api_router.get("/dashboard/heatmap", response_model=list[HeatmapCell])
 async def get_heatmap():
-    """Return real-time demand heatmap cells (stub — Phase 5)."""
-    return []
+    """Return real-time demand heatmap cells from StationStatsTracker.
+
+    Phase 6 P2: Replaces the Phase 5 stub with real demand_factor data.
+    Each cell represents a station with its demand intensity [0.0, 1.0]
+    normalized by max ``trips_completed`` across all stations.
+    """
+    tracker = _engine_mgr.station_stats_tracker
+    city = _map_service.load_city("Beijing")
+    factors = tracker.get_demand_factors()
+    cells: list[HeatmapCell] = []
+    for sid_str, intensity in factors.items():
+        station = city.stations.get(sid_str)
+        if station is not None:
+            cells.append(HeatmapCell(
+                lat=station.position.lat,
+                lng=station.position.lng,
+                intensity=intensity,
+            ))
+    return cells
 
 
 @api_router.get("/dashboard/flows", response_model=list[FlowLine])
