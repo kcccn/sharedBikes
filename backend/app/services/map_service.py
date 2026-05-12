@@ -66,23 +66,12 @@ class MapService:
         """Construct a ``City`` from its configuration using procedural generation."""
         generator = ProceduralCityGenerator(
             seed=hash(config.city_id) % (2**31),
-            grid_rows=35,
-            grid_cols=35,
+            grid_rows=config.procedural.grid_rows,
+            grid_cols=config.procedural.grid_cols,
+            spacing=config.procedural.spacing,
+            jitter=config.procedural.jitter,
         )
         return generator.generate(config)
-
-    @staticmethod
-    def _build_zones(config: CityConfig) -> dict[str, Zone]:
-        """Build zones from config or return an empty dict."""
-        zones: dict[str, Zone] = {}
-        for zc in config.zone_configs:
-            polygon = [Coord(p["x"], p["y"]) for p in zc.get("polygon", [])]
-            zones[zc["zone_id"]] = Zone(
-                zone_id=zc["zone_id"],
-                name=zc.get("name", zc["zone_id"]),
-                polygon=polygon,
-            )
-        return zones
 
     # ── Fallback ─────────────────────────────────────────────────────
 
