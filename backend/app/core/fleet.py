@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import NamedTuple
+
+from app.core.coord import Coord
 
 
 class BikeStatus(Enum):
@@ -14,11 +15,6 @@ class BikeStatus(Enum):
     LOST = auto()
 
 
-class LatLng(NamedTuple):
-    lat: float
-    lng: float
-
-
 @dataclass
 class Bike:
     """A single shared bike."""
@@ -26,7 +22,7 @@ class Bike:
     bike_id: str
     status: BikeStatus = BikeStatus.AVAILABLE
     station_id: str | None = None  # docked station (None when in use / lost)
-    position: LatLng | None = None
+    position: Coord | None = None
     total_rides: int = 0
     total_distance_km: float = 0.0
     battery_level: float = 100.0  # for e-bikes
