@@ -35,7 +35,7 @@
 | 城市生成 | `ProceduralCityGenerator` — seed 驱动 | ✅ 完成 |
 | 地图路网 | ~~OSMnx + NetworkX~~ → 过程化生成 | ❌ 废弃 |
 | 配置 | TOML (pydantic-settings) | ✅ 确定 |
-| 前端渲染 | Canvas 抽象渲染 | ⏳ 待建 (Phase B) |
+| 前端渲染 | Canvas 抽象渲染 | ✅ 完成 |
 | ~~前端~~ | ~~Leaflet 瓦片地图~~ | ❌ 废弃 |
 | 领域架构 | 领域驱动分层 | ✅ 确定 |
 
