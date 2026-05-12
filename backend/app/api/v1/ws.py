@@ -39,8 +39,17 @@ def _serialize_station(station: Any) -> dict[str, Any]:
     }
 
 
-def _serialize_tick(event: TickEvents) -> dict[str, Any]:
-    """Serialize a TickEvents dataclass to a WS tick message payload."""
+def _serialize_tick(
+    event: TickEvents,
+    demand_factors: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Serialize a TickEvents dataclass to a WS tick message payload.
+
+    Args:
+        event: The tick event to serialize.
+        demand_factors: Optional per-station demand factors [0.0, 1.0]
+            from ``StationStatsTracker.get_demand_factors()`` (Phase 6 P2).
+    """
     trips = [
         {
             "from_station": t.from_station,
@@ -49,7 +58,7 @@ def _serialize_tick(event: TickEvents) -> dict[str, Any]:
         }
         for t in event.trips
     ]
-    return {
+    payload: dict[str, Any] = {
         "type": "tick",
         "tick": event.tick,
         "time": event.time_of_day,
@@ -61,6 +70,9 @@ def _serialize_tick(event: TickEvents) -> dict[str, Any]:
             for f, t, c in event.dispatch_movements
         ],
     }
+    if demand_factors is not None:
+        payload["demand_factors"] = demand_factors
+    return payload
 
 
 @ws_router.websocket("/ws")
