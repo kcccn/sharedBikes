@@ -136,6 +136,10 @@ class SimulationEngine:
     _ledger: object | None = None  # Ledger — lazily initialised
     _daily_reports: list[DailyReport] = field(default_factory=list)
 
+    # Phase C: player action overrides
+    _station_price_overrides: dict[str, float] = field(default_factory=dict)
+    _station_capacity_overrides: dict[str, int] = field(default_factory=dict)
+
     # ── lifecycle ────────────────────────────────────────────────
 
     def start(self) -> None:
