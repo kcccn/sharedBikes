@@ -2,6 +2,10 @@
 
 This is a pure-core dataclass (no I/O, no framework dependency) that
 serves as the contract between the config file format and the loader.
+
+Note: OSM data source configuration has been removed. All cities are
+now generated procedurally (ProceduralCityGenerator). The config file
+retains simulation tuning parameters.
 """
 
 from __future__ import annotations
@@ -22,14 +26,13 @@ class StationGenerationConfig:
 
 
 @dataclass(frozen=True)
-class OSMConfig:
-    """OSM data source configuration."""
+class ProceduralConfig:
+    """Procedural generation parameters for the city generator."""
 
-    source: Literal["url", "file", "mock"] = "mock"
-    url: str = ""
-    file_path: str = ""
-    bounding_box: tuple[float, float, float, float] | None = None
-    """(min_lat, min_lng, max_lat, max_lng) for area extraction."""
+    grid_rows: int = 35
+    grid_cols: int = 35
+    spacing: float = 1.0
+    jitter: float = 0.1
 
 
 @dataclass(frozen=True)
@@ -42,8 +45,8 @@ class CityConfig:
     country: str = ""
     timezone: str = "UTC"
 
-    # ── OSM data ────────────────────────────────────────
-    osm: OSMConfig = field(default_factory=OSMConfig)
+    # ── Procedural generation ───────────────────────────
+    procedural: ProceduralConfig = field(default_factory=ProceduralConfig)
 
     # ── Simulation defaults ─────────────────────────────
     default_station_capacity: int = 30
@@ -64,4 +67,4 @@ class CityConfig:
 
     # ── Zones (optional override) ───────────────────────
     zone_configs: tuple[dict, ...] = ()
-    """Each dict: {zone_id, name, polygon: [{lat, lng}, ...]}"""
+    """Each dict: {zone_id, name, polygon: [{x, y}, ...]}"""
