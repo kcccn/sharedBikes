@@ -1,26 +1,27 @@
-"""City domain: road network, stations, and zones."""
+"""City domain: road network, stations, and zones.
+
+All positions use abstract ``Coord(x, y)`` instead of geographic coordinates.
+Distance calculations use Euclidean distance.
+"""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_problem
 from typing import NamedTuple
 
 import networkx as nx
 
-
-class LatLng(NamedTuple):
-    lat: float
-    lng: float
+from app.core.coord import Coord
 
 
 @dataclass(frozen=True)
 class Node:
-    """A road-network node (intersection / OSM node)."""
+    """A road-network node (intersection)."""
 
     node_id: str
-    position: LatLng
+    position: Coord
     elevation_m: float = 0.0
 
 
@@ -44,7 +45,7 @@ class Station:
     """A bike parking station."""
 
     station_id: str
-    position: LatLng
+    position: Coord
     capacity: int
     name: str = ""
 
@@ -55,7 +56,7 @@ class Zone:
 
     zone_id: str
     name: str
-    polygon: list[LatLng]
+    polygon: list[Coord]
 
 
 class City:
@@ -89,20 +90,20 @@ class City:
     def zones(self) -> dict[str, Zone]:
         return self._zones
 
-    def find_nearest_station(self, position: LatLng) -> tuple[Station | None, float]:
-        """Return (nearest station, distance in km) or (None, inf) if no stations."""
+    def find_nearest_station(self, position: Coord) -> tuple[Station | None, float]:
+        """Return (nearest station, distance) or (None, inf) if no stations."""
         if not self._stations:
             return None, math.inf
         best_station: Station | None = None
         best_dist = math.inf
         for station in self._stations.values():
-            d = _haversine_km(position, station.position)
+            d = position.distance_to(station.position)
             if d < best_dist:
                 best_dist = d
                 best_station = station
         return best_station, best_dist
 
-    @cached_property
+    @cached_problem
     def _graph(self) -> nx.Graph:
         """Build an undirected NetworkX graph from nodes and edges (cached)."""
         G = nx.Graph()
@@ -132,11 +133,11 @@ class City:
         # Find nearest graph node for each station
         node_a = min(
             self._graph.nodes,
-            key=lambda n: _haversine_km(self._graph.nodes[n]["pos"], sta.position),
+            key=lambda n: self._graph.nodes[n]["pos"].distance_to(sta.position),
         )
         node_b = min(
             self._graph.nodes,
-            key=lambda n: _haversine_km(self._graph.nodes[n]["pos"], stb.position),
+            key=lambda n: self._graph.nodes[n]["pos"].distance_to(stb.position),
         )
 
         if node_a == node_b:
@@ -151,19 +152,3 @@ class City:
 
         # Convert metres to km
         return path_len / 1000.0
-
-
-# ---- internal helpers ----
-
-
-def _haversine_km(a: LatLng, b: LatLng) -> float:
-    """Great-circle distance between two LatLng points in km."""
-    R = 6371.0
-    dlat = math.radians(b.lat - a.lat)
-    dlng = math.radians(b.lng - a.lng)
-    sin_dlat = math.sin(dlat / 2)
-    sin_dlng = math.sin(dlng / 2)
-    h = sin_dlat * sin_dlat + math.cos(math.radians(a.lat)) * math.cos(
-        math.radians(b.lat)
-    ) * sin_dlng * sin_dlng
-    return 2 * R * math.atan2(math.sqrt(h), math.sqrt(1 - h))
