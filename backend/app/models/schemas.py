@@ -1,4 +1,8 @@
-"""Pydantic DTOs for API request/response."""
+"""Pydantic DTOs for API request/response.
+
+All position fields use ``x`` / ``y`` (abstract Coord) instead of
+``lat`` / ``lng`` (geographic).
+"""
 
 from pydantic import BaseModel
 
@@ -7,8 +11,8 @@ from pydantic import BaseModel
 
 class NodeOut(BaseModel):
     node_id: str
-    lat: float
-    lng: float
+    x: float
+    y: float
     elevation_m: float
 
 
@@ -22,8 +26,8 @@ class EdgeOut(BaseModel):
 
 class StationOut(BaseModel):
     station_id: str
-    lat: float
-    lng: float
+    x: float
+    y: float
     capacity: int
     name: str
     available_bikes: int = 0
@@ -53,8 +57,8 @@ class BikeOut(BaseModel):
     bike_id: str
     status: str
     station_id: str | None = None
-    lat: float | None = None
-    lng: float | None = None
+    x: float | None = None
+    y: float | None = None
 
 
 class FleetOut(BaseModel):
@@ -91,16 +95,16 @@ class EventOut(BaseModel):
 # ---- Dashboard ----
 
 class HeatmapCell(BaseModel):
-    lat: float
-    lng: float
+    x: float
+    y: float
     intensity: float
 
 
 class FlowLine(BaseModel):
-    from_lat: float
-    from_lng: float
-    to_lat: float
-    to_lng: float
+    from_x: float
+    from_y: float
+    to_x: float
+    to_y: float
     volume: int
 
 
