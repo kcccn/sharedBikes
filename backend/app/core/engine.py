@@ -84,6 +84,7 @@ class TickEvents:
     tick: int
     time_of_day: str
     trips: list[TripRequest] = field(default_factory=list)
+    completed_trips: list[ActiveTrip] = field(default_factory=list)  # Phase 6 P1: completed ActiveTrips
     ledger_entries: list[LedgerEntry] = field(default_factory=list)
     weather: str = "CLEAR"
     station_inventory: dict[str, int] = field(default_factory=dict)
