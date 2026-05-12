@@ -6,3 +6,4 @@
 - [abstract-coord-architecture-decision](abstract-coord-architecture-decision.md) — Phase 7: Abstract Coord Architecture — No Fake Realism
 - [roadmap-rewrite-abstract-direction](roadmap-rewrite-abstract-direction.md) — Roadmap 全面重写 — 抽象坐标方向
 - [phase-a-abstract-coord-complete](phase-a-abstract-coord-complete.md) — Phase A Complete — Abstract Coord + ProceduralCityGenerator
+- [procedural-config-wiring-pattern](procedural-config-wiring-pattern.md) — ProceduralCityGenerator must read grid params from CityConfig.procedural
