@@ -379,6 +379,7 @@ class SimulationEngine:
             tick=self.tick,
             time_of_day=self.time_of_day(),
             trips=trips,
+            completed_trips=completed_trips,
             ledger_entries=ledger_entries,
             weather=self.environment.condition.name,
             station_inventory=station_inventory,
