@@ -1,1 +1,2 @@
 - [leaderboard-architecture-pattern](leaderboard-architecture-pattern.md) — Phase 6 P1: Async Leaderboard Architecture
+- [leaderboard-implementation-complete](leaderboard-implementation-complete.md) — Phase 6 P1: Async Leaderboard Implementation Complete
