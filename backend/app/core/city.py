@@ -103,7 +103,7 @@ class City:
                 best_station = station
         return best_station, best_dist
 
-    @cached_problem
+    @cached_property
     def _graph(self) -> nx.Graph:
         """Build an undirected NetworkX graph from nodes and edges (cached)."""
         G = nx.Graph()
