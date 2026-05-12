@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.core.city import City, Coord, Node, Station, Zone
+from app.core.city import City
 from app.core.city_config import CityConfig
 from app.services.city_loader import CityLoader, CityLoadError
 from app.services.procedural_city_generator import ProceduralCityGenerator
