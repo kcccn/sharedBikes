@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.core.city_config import CityConfig, OSMConfig, StationGenerationConfig
+from app.core.city_config import CityConfig, ProceduralConfig, StationGenerationConfig
 
 try:
     import tomllib
@@ -58,7 +58,7 @@ class CityLoader:
             raise CityLoadError(f"Invalid TOML for '{city_id}': {exc}") from exc
 
         city = data.get("city", {})
-        osm_raw = data.get("osm", {})
+        procedural_raw = data.get("procedural", {})
         station_raw = data.get("station_generation", {})
         zones_raw = data.get("zones", [])
 
@@ -73,15 +73,11 @@ class CityLoader:
             total_bikes=city.get("total_bikes", 500),
             peak_hour_multiplier=city.get("peak_hour_multiplier", 3.0),
             off_peak_multiplier=city.get("off_peak_multiplier", 0.3),
-            osm=OSMConfig(
-                source=osm_raw.get("source", "mock"),
-                url=osm_raw.get("url", ""),
-                file_path=osm_raw.get("file_path", ""),
-                bounding_box=(
-                    tuple(osm_raw["bounding_box"])
-                    if "bounding_box" in osm_raw
-                    else None
-                ),
+            procedural=ProceduralConfig(
+                grid_rows=procedural_raw.get("grid_rows", 35),
+                grid_cols=procedural_raw.get("grid_cols", 35),
+                spacing=procedural_raw.get("spacing", 1.0),
+                jitter=procedural_raw.get("jitter", 0.1),
             ),
             station_generation=StationGenerationConfig(
                 enabled=station_raw.get("enabled", True),

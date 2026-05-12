@@ -30,14 +30,14 @@ _map_service = MapService()
 _engine_mgr = EngineManager()  # singleton
 
 
-def _get_city_data(city_name: str = "Beijing") -> CityOut:
+def _get_city_data(city_name: str = "default") -> CityOut:
     """Build a CityOut response from the MapService."""
     city = _map_service.load_city(city_name)
     nodes_out = [
         NodeOut(
             node_id=n.node_id,
-            lat=n.position.lat,
-            lng=n.position.lng,
+            x=n.position.x,
+            y=n.position.y,
             elevation_m=n.elevation_m,
         )
         for n in city.nodes.values()
@@ -55,8 +55,8 @@ def _get_city_data(city_name: str = "Beijing") -> CityOut:
     stations_out = [
         StationOut(
             station_id=s.station_id,
-            lat=s.position.lat,
-            lng=s.position.lng,
+            x=s.position.x,
+            y=s.position.y,
             capacity=s.capacity,
             name=s.name,
         )
@@ -66,7 +66,7 @@ def _get_city_data(city_name: str = "Beijing") -> CityOut:
         ZoneOut(
             zone_id=z.zone_id,
             name=z.name,
-            polygon=[(p.lat, p.lng) for p in z.polygon],
+            polygon=[(p.x, p.y) for p in z.polygon],
         )
         for z in city.zones.values()
     ]
@@ -94,12 +94,12 @@ async def get_city():
 @api_router.get("/city/stations", response_model=list[StationOut])
 async def get_stations():
     """Return all stations."""
-    city = _map_service.load_city("Beijing")
+    city = _map_service.load_city("default")
     return [
         StationOut(
             station_id=s.station_id,
-            lat=s.position.lat,
-            lng=s.position.lng,
+            x=s.position.x,
+            y=s.position.y,
             capacity=s.capacity,
             name=s.name,
         )
@@ -174,15 +174,15 @@ async def get_heatmap():
     normalized by max ``trips_completed`` across all stations.
     """
     tracker = _engine_mgr.station_stats_tracker
-    city = _map_service.load_city("Beijing")
+    city = _map_service.load_city("default")
     factors = tracker.get_demand_factors()
     cells: list[HeatmapCell] = []
     for sid_str, intensity in factors.items():
         station = city.stations.get(sid_str)
         if station is not None:
             cells.append(HeatmapCell(
-                lat=station.position.lat,
-                lng=station.position.lng,
+                x=station.position.x,
+                y=station.position.y,
                 intensity=intensity,
             ))
     return cells

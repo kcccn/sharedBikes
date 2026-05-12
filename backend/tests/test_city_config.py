@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from app.core.city_config import CityConfig, OSMConfig, StationGenerationConfig
+import pytest
+
+from app.core.city_config import CityConfig, ProceduralConfig, StationGenerationConfig
 from app.services.city_loader import CityLoader, CityLoadError
 
 
@@ -19,25 +21,27 @@ class TestCityConfigModel:
         cfg = CityConfig(city_id="test_city")
         assert cfg.city_id == "test_city"
         assert cfg.display_name == "test_city"  # falls back to city_id
-        assert cfg.osm.source == "mock"
         assert cfg.station_generation.enabled is True
+        assert cfg.procedural.grid_rows == 35
+        assert cfg.procedural.grid_cols == 35
 
     def test_full_config(self) -> None:
         cfg = CityConfig(
-            city_id="beijing",
-            display_name="Beijing",
-            country="China",
-            timezone="Asia/Shanghai",
+            city_id="default",
+            display_name="Default City",
+            country="",
+            timezone="UTC",
             default_station_capacity=40,
             initial_bikes_per_station=15,
             ticks_per_day=2880,
             total_bikes=10_000,
             peak_hour_multiplier=4.0,
             off_peak_multiplier=0.2,
-            osm=OSMConfig(
-                source="url",
-                url="https://example.com/map.osm.pbf",
-                bounding_box=(39.7, 116.1, 40.1, 116.7),
+            procedural=ProceduralConfig(
+                grid_rows=50,
+                grid_cols=50,
+                spacing=2.0,
+                jitter=0.5,
             ),
             station_generation=StationGenerationConfig(
                 enabled=True,
@@ -50,7 +54,10 @@ class TestCityConfigModel:
                 {"zone_id": "z1", "name": "Center", "polygon": []},
             ),
         )
-        assert cfg.osm.bounding_box == (39.7, 116.1, 40.1, 116.7)
+        assert cfg.procedural.grid_rows == 50
+        assert cfg.procedural.grid_cols == 50
+        assert cfg.procedural.spacing == 2.0
+        assert cfg.procedural.jitter == 0.5
         assert len(cfg.zone_configs) == 1
 
 
@@ -62,11 +69,11 @@ class TestCityLoader:
         assert loader.list_available_cities() == []
 
     def test_list_available_finds_tomls(self, tmp_path: Path) -> None:
-        _write_toml(tmp_path, "beijing.toml", "[city]\ndisplay_name = 'Beijing'")
-        _write_toml(tmp_path, "shanghai.toml", "[city]\ndisplay_name = 'Shanghai'")
+        _write_toml(tmp_path, "default.toml", "[city]\ndisplay_name = 'Default'")
+        _write_toml(tmp_path, "custom.toml", "[city]\ndisplay_name = 'Custom'")
         loader = CityLoader(config_dir=tmp_path)
         cities = loader.list_available_cities()
-        assert cities == ["beijing", "shanghai"]
+        assert cities == ["custom", "default"]
 
     def test_load_missing_raises(self, tmp_path: Path) -> None:
         loader = CityLoader(config_dir=tmp_path)
@@ -90,24 +97,24 @@ class TestCityLoader:
         assert cfg.city_id == "test"
         assert cfg.display_name == "Test City"
         assert cfg.total_bikes == 100
-        assert cfg.osm.source == "mock"  # default
+        assert cfg.station_generation.enabled is True  # default
+        assert cfg.procedural.grid_rows == 35  # default
 
-    def test_load_full_config(self, tmp_path: Path) -> None:
+    def test_load_with_procedural_config(self, tmp_path: Path) -> None:
         _write_toml(
             tmp_path,
-            "full.toml",
+            "custom.toml",
             """
 [city]
-display_name = "Full City"
-country = "China"
+display_name = "Custom City"
 total_bikes = 2000
 default_station_capacity = 40
-peak_hour_multiplier = 4.0
 
-[osm]
-source = "url"
-url = "https://example.com/map.osm"
-bounding_box = [39.7, 116.1, 40.1, 116.7]
+[procedural]
+grid_rows = 50
+grid_cols = 60
+spacing = 2.0
+jitter = 0.3
 
 [station_generation]
 enabled = true
@@ -116,11 +123,13 @@ max_stations = 300
 """,
         )
         loader = CityLoader(config_dir=tmp_path)
-        cfg = loader.load("full")
-        assert cfg.city_id == "full"
+        cfg = loader.load("custom")
+        assert cfg.city_id == "custom"
         assert cfg.total_bikes == 2000
-        assert cfg.osm.source == "url"
-        assert cfg.osm.bounding_box == (39.7, 116.1, 40.1, 116.7)
+        assert cfg.procedural.grid_rows == 50
+        assert cfg.procedural.grid_cols == 60
+        assert cfg.procedural.spacing == 2.0
+        assert cfg.procedural.jitter == 0.3
         assert cfg.station_generation.min_distance_km == 0.2
         assert cfg.station_generation.max_stations == 300
 
@@ -130,6 +139,3 @@ max_stations = 300
         loader = CityLoader(config_dir=tmp_path)
         all_cfgs = loader.load_all()
         assert set(all_cfgs) == {"a", "b"}
-
-
-import pytest  # noqa: E402 — fixture type hints require it

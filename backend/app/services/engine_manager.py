@@ -44,7 +44,7 @@ class EngineManager:
             self._init_engine()
         return self._engine
 
-    def _init_engine(self, city_name: str = "Beijing") -> None:
+    def _init_engine(self, city_name: str = "default") -> None:
         """Construct engine with all required dependencies.
 
         Phase 4: wires the global EventBus singleton so tick events are
@@ -73,14 +73,10 @@ class EngineManager:
         )
 
         # Wire AchievementEngine (Phase 6 P0)
-        # Pass the engine so achievement unlocks are written to the simulation's
-        # own ledger — NOT a private Ledger() instance (dual-ledger fix).
-        # AchievementEngine.__init__ subscribes to EventBus "tick" events.
         achievement_engine = AchievementEngine(engine=self._engine)
         achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
         # Wire StationStatsTracker (Phase 6 P1)
-        # Subscribes to EventBus "tick" events as a sibling consumer.
         self._station_stats_tracker = StationStatsTracker()
 
     @staticmethod
@@ -108,7 +104,7 @@ class EngineManager:
         assert self._station_stats_tracker is not None
         return self._station_stats_tracker
 
-    def reset_engine(self, city_name: str = "Beijing") -> None:
+    def reset_engine(self, city_name: str = "default") -> None:
         """Force-recreate the engine (e.g. when the user wants a fresh sim)."""
         self._engine = None
         self._station_stats_tracker = None
@@ -169,8 +165,8 @@ class EngineManager:
                 bike_id=b.bike_id,
                 status=b.status.name.lower(),
                 station_id=b.station_id,
-                lat=b.position.lat if b.position else None,
-                lng=b.position.lng if b.position else None,
+                x=b.position.x if b.position else None,
+                y=b.position.y if b.position else None,
             )
             for b in snap.bikes
         ]
@@ -190,8 +186,8 @@ class EngineManager:
             bike_id=bike.bike_id,
             status=bike.status.name.lower(),
             station_id=bike.station_id,
-            lat=bike.position.lat if bike.position else None,
-            lng=bike.position.lng if bike.position else None,
+            x=bike.position.x if bike.position else None,
+            y=bike.position.y if bike.position else None,
         )
 
     def get_events(self) -> list[EventOut]:

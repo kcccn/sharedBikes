@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.core.city import City, LatLng, Station
+from app.core.city import City, Coord, Station
 from app.core.engine import DailyReport, SimulationEngine, SimulationNotRunningError, SimState
 from app.core.fleet import Bike, Fleet
 from app.core.scheduler import GreedyThresholdStrategy
@@ -27,8 +27,8 @@ def engine() -> SimulationEngine:
 def engine_with_stations() -> SimulationEngine:
     """Engine with 2 stations and some bikes, for integration tests."""
     stations = {
-        "s1": Station(station_id="s1", position=LatLng(0, 0), capacity=30),
-        "s2": Station(station_id="s2", position=LatLng(0.1, 0.1), capacity=30),
+        "s1": Station(station_id="s1", position=Coord(0, 0), capacity=30),
+        "s2": Station(station_id="s2", position=Coord(10, 10), capacity=30),
     }
     city = City(nodes={}, edges={}, stations=stations, zones={})
     fleet = Fleet()

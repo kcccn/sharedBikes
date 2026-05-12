@@ -5,7 +5,9 @@ test_phase1_integration.py or test_map_service.py:
 
   AC3  Strong connectivity -- Kosaraju verification
   AC4  Station position non-overlap -- min-distance constraint
-  AC5  Boundary cases -- empty city, single node, broken OSM refs
+  AC5  Boundary cases -- empty city, single node, broken edge refs
+
+All position calculations use Euclidean distance on Coord(x, y).
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from __future__ import annotations
 import itertools
 import math
 
-from app.core.city import LatLng, Node, Edge, Station
+from app.core.city import Coord, Node, Edge, Station
 from app.core.station_generator import generate_stations
 
 
@@ -127,60 +129,44 @@ def test_connectivity_directed_ring() -> None:
 # =========================================================================
 
 
-def _haversine_km(a: LatLng, b: LatLng) -> float:
-    """Great-circle distance helper (same impl as station_generator)."""
-    R = 6371.0
-    dlat = math.radians(b.lat - a.lat)
-    dlng = math.radians(b.lng - a.lng)
-    sin_dlat = math.sin(dlat / 2)
-    sin_dlng = math.sin(dlng / 2)
-    h = (
-        sin_dlat * sin_dlat
-        + math.cos(math.radians(a.lat))
-        * math.cos(math.radians(b.lat))
-        * sin_dlng * sin_dlng
-    )
-    return 2 * R * math.atan2(math.sqrt(h), math.sqrt(1 - h))
-
-
 def _check_station_min_distance(
     stations: dict[str, Station],
-    min_km: float,
+    min_dist: float,
 ) -> list[tuple[str, str, float]]:
-    """Return list of (station_a, station_b, distance_km) pairs that violate the min-distance constraint."""
+    """Return list of (station_a, station_b, distance) pairs that violate the min-distance constraint."""
     violations: list[tuple[str, str, float]] = []
     items = list(stations.items())
     for i in range(len(items)):
         for j in range(i + 1, len(items)):
             sid_a, sta = items[i]
             sid_b, stb = items[j]
-            d = _haversine_km(sta.position, stb.position)
-            if d < min_km:
+            d = sta.position.distance_to(stb.position)
+            if d < min_dist:
                 violations.append((sid_a, sid_b, d))
     return violations
 
 
 def test_stations_no_overlap_3x3_grid() -> None:
-    """AC4: Stations generated on a 3x3 grid must respect min_distance_km."""
+    """AC4: Stations generated on a 3x3 grid must respect min_distance."""
     nodes, edges = _build_3x3_grid()
-    min_dist = 0.3  # 300 m
+    min_dist = 0.3
     stations = generate_stations(
-        nodes, edges, min_distance_km=min_dist, min_capacity=10, max_capacity=50
+        nodes, edges, min_distance=min_dist, min_capacity=10, max_capacity=50
     )
     assert len(stations) > 0, "Should generate at least 1 station"
 
     violations = _check_station_min_distance(stations, min_dist)
     assert not violations, (
-        f"Found {len(violations)} station pair(s) below {min_dist} km: "
-        + ", ".join(f"{a}<->{b}={d:.4f}km" for a, b, d in violations)
+        f"Found {len(violations)} station pair(s) below {min_dist}: "
+        + ", ".join(f"{a}<->{b}={d:.4f}" for a, b, d in violations)
     )
 
 
 def test_stations_tight_min_distance_allows_more() -> None:
-    """AC4: Smaller min_distance_km allows more stations."""
+    """AC4: Smaller min_distance allows more stations."""
     nodes, edges = _build_3x3_grid()
-    relaxed = generate_stations(nodes, edges, min_distance_km=0.01, min_capacity=10, max_capacity=50)
-    strict = generate_stations(nodes, edges, min_distance_km=0.5, min_capacity=10, max_capacity=50)
+    relaxed = generate_stations(nodes, edges, min_distance=0.01, min_capacity=10, max_capacity=50)
+    strict = generate_stations(nodes, edges, min_distance=0.5, min_capacity=10, max_capacity=50)
     assert len(relaxed) >= len(strict), (
         f"Relaxed ({len(relaxed)}) should have >= stations than strict ({len(strict)})"
     )
@@ -200,7 +186,7 @@ def test_empty_city_returns_no_stations() -> None:
 def test_single_node_no_edges_returns_fallback() -> None:
     """AC5: A city with one node and no edges falls back to grid placement."""
     nodes = {
-        "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
+        "n1": Node(node_id="n1", position=Coord(0.0, 0.0)),
     }
     stations = generate_stations(nodes, {}, min_capacity=10, max_capacity=50)
     # The grid fallback should place 1 station on the single node
@@ -211,10 +197,9 @@ def test_single_node_no_edges_returns_fallback() -> None:
 def test_single_node_no_edges_max_stations_zero() -> None:
     """AC5: Single node with max_stations=0 or similar limit."""
     nodes = {
-        "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
+        "n1": Node(node_id="n1", position=Coord(0.0, 0.0)),
     }
     stations = generate_stations(nodes, {}, min_capacity=10, max_capacity=50, max_stations=0)
-    # max_stations=0 means no stations placed
     assert len(stations) == 0
 
 
@@ -222,7 +207,7 @@ def test_broken_edge_refers_to_missing_node() -> None:
     """AC5: generate_stations must not crash if an edge refs a non-existent node
     and must still produce a station for the valid node."""
     nodes = {
-        "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
+        "n1": Node(node_id="n1", position=Coord(0.0, 0.0)),
     }
     edges = {
         "e_broken": Edge(
@@ -242,30 +227,6 @@ def test_broken_edge_refers_to_missing_node() -> None:
     )
 
 
-def test_oversized_coordinates() -> None:
-    """AC5: Station generation must handle nodes with lat/lng outside +/-90/+/-180 gracefully.
-    The valid node should still produce a station; the invalid one should be skipped."""
-    nodes = {
-        "n1": Node(node_id="n1", position=LatLng(39.9, 116.4)),
-        "n2": Node(node_id="n2", position=LatLng(999.0, 116.4)),  # invalid lat
-    }
-    edges = {
-        "e1": Edge(edge_id="e1", from_node="n1", to_node="n2", length_m=100),
-    }
-    # Should not crash, and at least n1 should get a station
-    stations = generate_stations(nodes, edges, min_capacity=10, max_capacity=50)
-    assert isinstance(stations, dict)
-    assert len(stations) > 0, "Should produce at least 1 station from valid node n1"
-    station_ids = list(stations.keys())
-    assert any("n1" in sid for sid in station_ids), (
-        f"Expected a station near n1, got: {station_ids}"
-    )
-    # n2 with lat=999 should not produce a station
-    assert not any("n2" in sid for sid in station_ids), (
-        f"Did not expect a station near invalid n2, got: {station_ids}"
-    )
-
-
 # =========================================================================
 # Helpers
 # =========================================================================
@@ -282,22 +243,22 @@ def _build_3x3_grid() -> tuple[dict[str, Node], dict[str, Edge]]:
       n7 -- n8 -- n9
 
     9 nodes, 12 bidirectional edges (24 directed records).
+    Nodes are spaced 1.0 unit apart.
     """
     nodes: dict[str, Node] = {}
-    # Geohash-style grid coordinates ~200 m apart
     coords = [
-        ("n1", 39.9200, 116.4000),
-        ("n2", 39.9200, 116.4100),
-        ("n3", 39.9200, 116.4200),
-        ("n4", 39.9100, 116.4000),
-        ("n5", 39.9100, 116.4100),
-        ("n6", 39.9100, 116.4200),
-        ("n7", 39.9000, 116.4000),
-        ("n8", 39.9000, 116.4100),
-        ("n9", 39.9000, 116.4200),
+        ("n1", 0.0, 2.0),
+        ("n2", 1.0, 2.0),
+        ("n3", 2.0, 2.0),
+        ("n4", 0.0, 1.0),
+        ("n5", 1.0, 1.0),
+        ("n6", 2.0, 1.0),
+        ("n7", 0.0, 0.0),
+        ("n8", 1.0, 0.0),
+        ("n9", 2.0, 0.0),
     ]
-    for nid, lat, lng in coords:
-        nodes[nid] = Node(node_id=nid, position=LatLng(lat, lng))
+    for nid, x, y in coords:
+        nodes[nid] = Node(node_id=nid, position=Coord(x, y))
 
     edges: dict[str, Edge] = {}
     _edge_counter = itertools.count(1)

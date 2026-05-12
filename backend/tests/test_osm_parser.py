@@ -1,11 +1,16 @@
-"""Tests for the OSM parser — all tests use synthetic graphs to avoid network calls."""
+"""Tests for the OSM parser — all tests use synthetic graphs to avoid network calls.
+
+Note: The OSM parser is deprecated. The public entry points raise ``OSMError``.
+These tests validate the preserved internal helpers (``_graph_to_city``,
+``_highway_allowed``, ``_parse_maxspeed``) for backward compat.
+"""
 
 from __future__ import annotations
 
 import networkx as nx
 import pytest
 
-from app.core.city import City, Edge, LatLng, Node
+from app.core.city import City, Coord, Edge, Node
 from app.services.osm_parser import (
     OSMError,
     _graph_to_city,
@@ -48,11 +53,11 @@ class TestGraphToCity:
         assert city.stations == {}
         assert city.zones == {}
 
-        # Node checks
+        # Node checks — Coord(x=lon, y=lat)
         n1 = city.nodes["1"]
         assert n1.node_id == "1"
-        assert n1.position.lat == 39.9
-        assert n1.position.lng == 116.4
+        assert n1.position.x == 116.4  # lon → x
+        assert n1.position.y == 39.9   # lat → y
         assert n1.elevation_m == 0.0
 
         # Edge checks
@@ -83,7 +88,6 @@ class TestGraphToCity:
 
     def test_accepts_list_highway_with_one_allowed(self) -> None:
         G = _make_graph()
-        # Override highway to be a list with one allowed type
         u, v, k, data = next(iter(G.edges(keys=True, data=True)))
         data["highway"] = ["primary", "trunk"]
 
@@ -111,7 +115,6 @@ class TestGraphToCity:
 
         city = _graph_to_city(G)
         edge = next(iter(city.edges.values()))
-        # Takes minimum
         assert edge.max_speed_kmh == 60.0
 
     def test_preserves_elevation(self) -> None:
@@ -139,16 +142,18 @@ class TestGraphToCity:
         with pytest.raises(OSMError, match="no valid nodes"):
             _graph_to_city(G)
 
-    def test_invalid_bbox_raises(self) -> None:
+    def test_parse_from_bbox_raises(self) -> None:
+        """The public parse_from_bbox now raises OSMError (deprecated)."""
         from app.services.osm_parser import parse_from_bbox
 
-        with pytest.raises(OSMError, match="Invalid bounding box"):
+        with pytest.raises(OSMError, match="no longer supported"):
             parse_from_bbox(north=30, south=40, east=120, west=110)
 
-    def test_nonexistent_file_raises(self) -> None:
+    def test_parse_from_file_raises(self) -> None:
+        """The public parse_from_file now raises OSMError (deprecated)."""
         from app.services.osm_parser import parse_from_file
 
-        with pytest.raises(OSMError, match="OSM file not found"):
+        with pytest.raises(OSMError, match="no longer supported"):
             parse_from_file("/nonexistent/file.osm.pbf")
 
 

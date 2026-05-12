@@ -1,36 +1,38 @@
-"""Tests for geospatial utility functions."""
+"""Tests for coordination utility functions."""
 
-from app.utils.geo import haversine_km, bearing, midpoint, LatLng
+from app.core.coord import Coord
+from app.utils.geo import haversine_km, bearing, midpoint
 
 
 def test_haversine_km_same_point() -> None:
-    pos = LatLng(39.9, 116.4)
+    pos = Coord(0.0, 0.0)
     assert haversine_km(pos, pos) == 0.0
 
 
-def test_haversine_km_beijing_shanghai() -> None:
-    beijing = LatLng(39.9042, 116.4074)
-    shanghai = LatLng(31.2304, 121.4737)
-    d = haversine_km(beijing, shanghai)
-    # ~1060 km
-    assert 1000 < d < 1100
-
-
-def test_bearing_north() -> None:
-    a = LatLng(0, 0)
-    b = LatLng(10, 0)
-    assert bearing(a, b) == 0.0  # due north
+def test_haversine_km_euclidean() -> None:
+    a = Coord(0.0, 0.0)
+    b = Coord(3.0, 4.0)
+    # Euclidean distance sqrt(3^2 + 4^2) = 5.0
+    assert haversine_km(a, b) == 5.0
 
 
 def test_bearing_east() -> None:
-    a = LatLng(0, 0)
-    b = LatLng(0, 10)
+    a = Coord(0.0, 0.0)
+    b = Coord(10.0, 0.0)
+    # 0° = east in bearing_to
+    assert bearing(a, b) == 0.0
+
+
+def test_bearing_north() -> None:
+    a = Coord(0.0, 0.0)
+    b = Coord(0.0, 10.0)
+    # 90° = north in bearing_to
     assert abs(bearing(a, b) - 90.0) < 1
 
 
 def test_midpoint() -> None:
-    a = LatLng(0, 0)
-    b = LatLng(10, 10)
+    a = Coord(0.0, 0.0)
+    b = Coord(10.0, 10.0)
     m = midpoint(a, b)
-    assert abs(m.lat - 5.0) < 0.5
-    assert abs(m.lng - 5.0) < 0.5
+    assert abs(m.x - 5.0) < 0.001
+    assert abs(m.y - 5.0) < 0.001

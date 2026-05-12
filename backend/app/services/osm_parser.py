@@ -1,9 +1,13 @@
-"""OSM data parser — converts OSM road networks to Core domain models.
+"""OSM data parser — DEPRECATED.
 
-Supports three input sources:
-- Place name (via Nominatim geocoding + osmnx)
-- Bounding box coordinates
-- Local .osm.pbf / .osm XML file
+All OSM parsing entry points (``parse_from_place``, ``parse_from_bbox``,
+``parse_from_file``) raise ``OSMError`` with a clear message. The internal
+helper functions (``_graph_to_city``, ``_highway_allowed``, ``_parse_maxspeed``,
+etc.) are preserved for backward-compatible unit-testing but are not intended
+for production use.
+
+Cities are now generated procedurally — see :class:`ProceduralCityGenerator`.
+This entire module will be removed after Phase B (frontend migration).
 """
 
 from __future__ import annotations
@@ -13,22 +17,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-import networkx as nx
-
-from app.core.city import City, Edge, LatLng, Node, Station, Zone
+from app.core.city import City, Coord, Edge, Node, Station, Zone
 
 logger = logging.getLogger(__name__)
-
-# The highway types we accept per the Phase-1 spec.
-ALLOWED_HIGHWAYS = frozenset({
-    "primary",
-    "secondary",
-    "tertiary",
-    "residential",
-})
-
-# osmnx custom_filter: download only the roads we care about.
-OSMX_HIGHWAY_FILTER = '["highway"~"primary|secondary|tertiary|residential"]'
 
 
 class OSMError(Exception):
@@ -40,45 +31,13 @@ def parse_from_place(
     *,
     simplify: bool = True,
     retain_all: bool = False,
-) -> City:
-    """Download and parse OSM road network for a named place.
-
-    Uses osmnx + Nominatim geocoding.
-
-    Parameters
-    ----------
-    place_name:
-        A place name Nominatim can geocode (e.g. ``"Beijing, China"``).
-    simplify:
-        Whether osmnx should simplify the graph (merge interstitial nodes).
-    retain_all:
-        If True, keep all graph components; if False, retain only the largest.
-
-    Returns
-    -------
-    A fully populated ``City`` with nodes and edges.
-
-    Raises
-    ------
-    OSMError
-        If the place cannot be resolved or the graph is empty.
-    """
-    _ensure_osmnx()
-
-    try:
-        import osmnx as ox
-
-        G = ox.graph_from_place(
-            place_name,
-            network_type="drive",
-            custom_filter=OSMX_HIGHWAY_FILTER,
-            simplify=simplify,
-            retain_all=retain_all,
-        )
-    except Exception as exc:
-        raise OSMError(f"Failed to download OSM data for {place_name!r}: {exc}") from exc
-
-    return _graph_to_city(G)
+):
+    """Deprecated. OSM parsing has been removed."""
+    raise OSMError(
+        f"OSM parsing is no longer supported. "
+        f"Cities are now generated procedurally. "
+        f"Requested place: {place_name!r}"
+    )
 
 
 def parse_from_bbox(
@@ -89,104 +48,44 @@ def parse_from_bbox(
     *,
     simplify: bool = True,
     retain_all: bool = False,
-) -> City:
-    """Download and parse OSM road network within a bounding box.
-
-    Parameters
-    ----------
-    north, south, east, west:
-        Bounding box coordinates in WGS84 degrees.
-    simplify, retain_all:
-        See ``parse_from_place``.
-
-    Returns
-    -------
-    A fully populated ``City`` with nodes and edges.
-
-    Raises
-    ------
-    OSMError
-        If the bbox is invalid or the graph is empty.
-    """
-    _ensure_osmnx()
-
-    if south >= north or west >= east:
-        raise OSMError(
-            f"Invalid bounding box: north={north} must be > south={south}, "
-            f"east={east} must be > west={west}"
-        )
-
-    try:
-        import osmnx as ox
-
-        G = ox.graph_from_bbox(
-            north=north,
-            south=south,
-            east=east,
-            west=west,
-            network_type="drive",
-            custom_filter=OSMX_HIGHWAY_FILTER,
-            simplify=simplify,
-            retain_all=retain_all,
-        )
-    except Exception as exc:
-        raise OSMError(
-            f"Failed to download OSM data for bbox "
-            f"(n={north}, s={south}, e={east}, w={west}): {exc}"
-        ) from exc
-
-    return _graph_to_city(G)
+):
+    """Deprecated. OSM parsing has been removed."""
+    raise OSMError(
+        f"OSM parsing is no longer supported. "
+        f"Cities are now generated procedurally. "
+        f"Bounding box: N={north}, S={south}, E={east}, W={west}"
+    )
 
 
-def parse_from_file(filepath: str | Path, *, simplify: bool = True) -> City:
-    """Parse a local ``.osm.pbf`` or ``.osm`` XML file.
-
-    Parameters
-    ----------
-    filepath:
-        Path to the OSM file on disk.
-    simplify:
-        Whether osmnx should simplify the graph.
-
-    Returns
-    -------
-    A fully populated ``City`` with nodes and edges.
-
-    Raises
-    ------
-    OSMError
-        If the file does not exist or the graph is empty.
-    """
-    _ensure_osmnx()
-
-    path = Path(filepath)
-    if not path.exists():
-        raise OSMError(f"OSM file not found: {path}")
-
-    try:
-        import osmnx as ox
-
-        G = ox.graph_from_xml(str(path), simplify=simplify)
-    except Exception as exc:
-        raise OSMError(f"Failed to parse OSM file {path}: {exc}") from exc
-
-    return _graph_to_city(G)
+def parse_from_file(filepath: str | Path, *, simplify: bool = True):
+    """Deprecated. OSM parsing has been removed."""
+    raise OSMError(
+        f"OSM parsing is no longer supported. "
+        f"Cities are now generated procedurally. "
+        f"Requested file: {filepath}"
+    )
 
 
 # ---------------------------------------------------------------------------
-# Internal: osmnx NetworkX MultiDiGraph → City domain model
+# Internal helpers (preserved for backward-compatible testing)
 # ---------------------------------------------------------------------------
 
 
-def _graph_to_city(G: nx.MultiDiGraph) -> City:
+# The highway types we accept per the Phase-1 spec.
+ALLOWED_HIGHWAYS = frozenset({
+    "primary",
+    "secondary",
+    "tertiary",
+    "residential",
+})
+
+
+def _graph_to_city(G: Any) -> City:
     """Convert an osmnx street-network graph to a ``City`` domain object.
 
-    This function is **idempotent** with respect to OSM data quality:
-    - Nodes missing coordinates are silently skipped.
-    - Edges whose ``source`` or ``target`` node was skipped are dropped.
-    - Edges whose ``highway`` tag is absent or not in the allowed set are
-      dropped (belt-and-suspenders).
-    - ``maxspeed`` values are parsed from various OSM formats.
+    .. deprecated::
+        This function is retained only for existing unit tests.
+        OSM parsing is no longer supported for production use.
     """
     nodes: dict[str, Node] = {}
     edges: dict[str, Edge] = {}
@@ -202,14 +101,13 @@ def _graph_to_city(G: nx.MultiDiGraph) -> City:
         elevation = data.get("elevation")
         node = Node(
             node_id=str(osmid),
-            position=LatLng(lat=float(lat), lng=float(lon)),
+            position=Coord(x=float(lon), y=float(lat)),
             elevation_m=float(elevation) if elevation is not None else 0.0,
         )
         nodes[node.node_id] = node
 
     # ── Build edge map ────────────────────────────────────────────────
     for u, v, key, data in G.edges(keys=True, data=True):
-        # Belt-and-suspenders highway filter for local-file parsing.
         highway_val = data.get("highway")
         if not _highway_allowed(highway_val):
             continue
@@ -217,7 +115,6 @@ def _graph_to_city(G: nx.MultiDiGraph) -> City:
         su = str(u)
         sv = str(v)
 
-        # Skip edges whose endpoints were dropped.
         if su not in nodes or sv not in nodes:
             logger.debug("Dropping edge %s→%s (missing endpoint in node map)", u, v)
             continue
@@ -247,39 +144,15 @@ def _graph_to_city(G: nx.MultiDiGraph) -> City:
     )
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────
-
-
-def _ensure_osmnx() -> None:
-    """Check osmnx is importable; raise a helpful OSMError if not."""
-    try:
-        import osmnx  # noqa: F401
-    except ImportError:
-        raise OSMError(
-            "osmnx is required but not installed. Run: pip install osmnx"
-        )
-
-
 def _highway_allowed(highway_val: Any) -> bool:
-    """Check whether an OSM ``highway`` tag value is in our allowed set.
-
-    osmnx sometimes returns a *list* of highway values for a single edge.
-    We accept the edge if *any* value in the list is allowed.
-    """
+    """Check whether an OSM ``highway`` tag value is in our allowed set."""
     if isinstance(highway_val, list):
         return any(h in ALLOWED_HIGHWAYS for h in highway_val)
     return highway_val in ALLOWED_HIGHWAYS
 
 
 def _parse_maxspeed(raw: Any) -> float:
-    """Parse an OSM ``maxspeed`` tag into a float (km/h).
-
-    Handles the common OSM representations:
-    - ``None`` / missing → 30 km/h (urban default)
-    - numeric string → ``float(s)``
-    - ``"50 km/h"``, ``"30 mph"`` → converted to km/h
-    - ``["50", "60"]`` → takes the *minimum* (conservative)
-    """
+    """Parse an OSM ``maxspeed`` tag into a float (km/h)."""
     if raw is None:
         return 30.0
 

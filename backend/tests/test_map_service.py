@@ -1,4 +1,4 @@
-"""Tests for MapService with city config integration."""
+"""Tests for MapService with procedural city generation."""
 
 from pathlib import Path
 
@@ -84,13 +84,11 @@ def test_map_service_clear_cache(tmp_path: Path) -> None:
     assert city_a is not city_b  # new object after clearing
 
 
-def test_map_service_fallback_to_minimal() -> None:
-    """Without any config, load_city falls back to minimal city."""
+def test_map_service_fallback_to_default() -> None:
+    """Without any config, load_city falls back to default procedural city."""
     svc = MapService()
     city = svc.load_city("unknown")
-    assert len(city.nodes) == 1
-    assert len(city.edges) == 0
-    assert len(city.stations) == 0
-
-
-import pytest  # noqa: E402
+    assert len(city.nodes) > 0
+    assert len(city.edges) > 0
+    # Default provides station generation
+    assert len(city.stations) > 0
