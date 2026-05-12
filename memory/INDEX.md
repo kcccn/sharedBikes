@@ -1,3 +1,4 @@
 - [leaderboard-architecture-pattern](leaderboard-architecture-pattern.md) — Phase 6 P1: Async Leaderboard Architecture
 - [leaderboard-implementation-complete](leaderboard-implementation-complete.md) — Phase 6 P1: Async Leaderboard Implementation Complete
 - [heatmap-demand-factor-pattern](heatmap-demand-factor-pattern.md) — Phase 6 P2: Heatmap — demand_factor + Leaflet.heat
+- [phase6-complete](phase6-complete.md) — Phase 6 Complete — AchievementEngine + Leaderboard + Heatmap
