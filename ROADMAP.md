@@ -128,18 +128,18 @@ v0.5 ─── 能刷：成就 + 深度策略 🔴 下一个！
 
 ---
 
-## 当前架构前提条件（Architecture Prerequisites）
+## 当前架构前提条件（Architecture Prerequisites ✅ 全部完成）
 
-以下基础设施项是**跨 Phase 的隐性依赖**，必须在下个 Phase 开始前完成：
+以下基础设施项是**跨 Phase 的隐性依赖**，现已全部完成：
 
-| # | 项目 | 行数 | 依赖方 | 说明 |
-|---|------|------|--------|------|
-| 1 | `City.shortest_path()` | ~50 | Phase 3 NPC 通勤 | NetworkX 图已存在但未暴露寻路能力 |
-| 2 | `_tick()` → `TickEvents` | ~30 | Phase 2-6 全部 | 事件化改造使测试/回放/分析成为可能 |
-| 3 | `DemandService.generate()` 接口改造 | ~20 | Phase 2 经济系统 | 需要接收 stations 参数并注入 Engine |
-| 4 | `RuleBasedDemandService` (MVP) | ~20 | v0.2 冷启动 | 避免首次体验全零报表 |
-| 5 | Wire API → Engine | ~30 | 跨 Phase | 模拟端点硬编码 stub，需接入真实引擎 |
-| 6 | `TripRequest` 站 ID 守卫 | ~10 | Phase 2/3 | 避免 KeyError 静默崩溃 |
+| # | 项目 | 状态 | 完成于 |
+|---|------|------|--------|
+| 1 | `City.shortest_path()` | ✅ 完成 | Phase 1 |
+| 2 | `_tick()` → `TickEvents` | ✅ 完成 | Phase 4 (EventBus) |
+| 3 | `DemandService.generate()` 接口改造 | ✅ 完成 | Phase 3 |
+| 4 | `RuleBasedDemandService` (MVP) | ✅ 完成 | Phase 3-4 |
+| 5 | Wire API → Engine | ✅ 完成 | Phase 4 + Phase 5 |
+| 6 | `TripRequest` 站 ID 守卫 | ✅ 完成 | Phase 2 |
 
 ---
 
