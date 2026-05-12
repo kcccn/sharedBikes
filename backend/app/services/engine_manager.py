@@ -10,7 +10,6 @@ from __future__ import annotations
 from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
-from app.core.finance import Ledger
 from app.core.fleet import Bike, Fleet
 from app.core.scheduler import GreedyThresholdStrategy
 from app.core.weather import Environment
@@ -69,8 +68,10 @@ class EngineManager:
         )
 
         # Wire AchievementEngine (Phase 6 P0)
-        # Automatically subscribes to EventBus "tick" events via __init__
-        achievement_engine = AchievementEngine(ledger=Ledger())
+        # Pass the engine so achievement unlocks are written to the simulation's
+        # own ledger — NOT a private Ledger() instance (dual-ledger fix).
+        # AchievementEngine.__init__ subscribes to EventBus "tick" events.
+        achievement_engine = AchievementEngine(engine=self._engine)
         achievement_engine.register(*BUILTIN_ACHIEVEMENTS)
 
     @staticmethod

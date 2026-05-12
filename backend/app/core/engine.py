@@ -211,6 +211,10 @@ class SimulationEngine:
         """Current ledger balance (convenience)."""
         return self.ledger.balance()  # type: ignore[union-attr]
 
+    def append_ledger(self, entries: list[LedgerEntry]) -> None:
+        """Append entries to the engine's ledger (public mutator)."""
+        self._ledger = self._ledger.append(entries)
+
     @property
     def is_bankrupt(self) -> bool:
         """Whether the simulation has hit bankruptcy threshold."""

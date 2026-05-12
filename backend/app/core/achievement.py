@@ -29,7 +29,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from app.core.engine import SimulationEngine
 
 from app.core.event_bus import EventBus
 from app.core.finance import Ledger, LedgerEntry, RevenueCategory
@@ -288,17 +291,21 @@ class AchievementState:
 class AchievementEngine:
     """Tick-driven achievement engine.
 
+    Writes unlock entries to the simulation engine's ledger via
+    ``SimulationEngine.append_ledger()``, ensuring achievement bonuses
+    are visible in the same ledger used for balance / query operations.
+
     Usage::
 
-        engine = AchievementEngine(ledger)
+        engine = AchievementEngine(sim_engine)
         engine.register(*BUILTIN_ACHIEVEMENTS)
         # AchievementEngine.__init__ subscribes to EventBus "tick"
     """
 
-    def __init__(self, ledger: Ledger) -> None:
+    def __init__(self, engine: SimulationEngine) -> None:
         self._registry: dict[str, AchievementDef] = {}
         self._state = AchievementState()
-        self._ledger = ledger
+        self._engine = engine
         self._ticks_per_day = 1440
 
         # Subscribe to EventBus tick events
@@ -344,7 +351,7 @@ class AchievementEngine:
                 self._state.unlocked.add(defn.id)
                 new_unlocks.append(defn)
 
-        # Batch-write unlocks to Ledger
+        # Batch-write unlocks to the simulation engine's ledger
         if new_unlocks:
             entries = [
                 LedgerEntry(
@@ -356,7 +363,7 @@ class AchievementEngine:
                 )
                 for d in new_unlocks
             ]
-            self._ledger = self._ledger.append(entries)
+            self._engine.append_ledger(entries)
 
         # Track cumulative counters
         self._state.counters["trip_count"] = ctx.trip_count

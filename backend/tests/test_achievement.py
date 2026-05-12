@@ -1,5 +1,7 @@
 """Tests for the AchievementEngine (achievement.py)."""
 
+from dataclasses import dataclass, field
+
 from app.core.achievement import (
     AchievementCategory,
     AchievementDef,
@@ -20,6 +22,28 @@ from app.core.achievement import (
 from app.core.engine import TickEvents
 from app.core.event_bus import EventBus
 from app.core.finance import Ledger, LedgerEntry, RevenueCategory
+
+
+# ── test helper: fake engine ────────────────────────────────────
+
+
+@dataclass
+class _FakeEngine:
+    """Minimal SimulationEngine stand-in for AchievementEngine tests.
+
+    Provides the same ``ledger`` property and ``append_ledger()`` method
+    that ``AchievementEngine`` depends on, without requiring a full
+    simulation engine with City / Fleet / etc.
+    """
+
+    _ledger: Ledger = field(default_factory=Ledger)
+
+    @property
+    def ledger(self) -> Ledger:
+        return self._ledger
+
+    def append_ledger(self, entries: list[LedgerEntry]) -> None:
+        self._ledger = self._ledger.append(entries)
 
 
 # ── helpers ─────────────────────────────────────────────────────
@@ -270,8 +294,8 @@ class TestBuiltinAchievements:
 class TestAchievementEngine:
     def setup_method(self) -> None:
         EventBus.reset_instance()
-        self.ledger = Ledger()
-        self.engine = AchievementEngine(self.ledger)
+        self.fake_engine = _FakeEngine()
+        self.engine = AchievementEngine(self.fake_engine)
 
     def test_register_single(self) -> None:
         defn = AchievementDef(
@@ -326,8 +350,8 @@ class TestAchievementEngine:
         event = _make_tick_event(tick=5)
         self.engine._on_tick(event)
 
-        # Check Ledger has the achievement entry
-        entries = self.engine._ledger.query(
+        # Check engine's ledger has the achievement entry
+        entries = self.fake_engine.ledger.query(
             category=RevenueCategory.ACHIEVEMENT,
         )
         assert len(entries) == 1
@@ -348,10 +372,10 @@ class TestAchievementEngine:
         assert self.engine.unlocked_count == 1
 
         # Second tick — condition still true, but already unlocked
-        ledger_len_before = len(self.engine._ledger)
+        ledger_len_before = len(self.fake_engine.ledger)
         self.engine._on_tick(_make_tick_event(tick=2))
         assert self.engine.unlocked_count == 1
-        assert len(self.engine._ledger) == ledger_len_before  # no duplicate entry
+        assert len(self.fake_engine.ledger) == ledger_len_before  # no duplicate entry
 
     def test_builtin_achievements_unlock(self) -> None:
         self.engine.register(*BUILTIN_ACHIEVEMENTS)
