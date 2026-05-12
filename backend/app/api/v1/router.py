@@ -194,6 +194,20 @@ async def get_flows():
     return []
 
 
+# ---- Session (Phase C) ----
+
+@api_router.get("/session")
+async def get_session():
+    """Return current GameSession overview (balance, command history)."""
+    return _engine_mgr.get_session_summary()
+
+
+@api_router.post("/session/reset")
+async def reset_session():
+    """Reset the GameSession (clears command history, resets balance)."""
+    return _engine_mgr.reset_session()
+
+
 # ---- Leaderboard (Phase 6 P1) ----
 
 @api_router.get("/leaderboard/stations", response_model=list[LeaderboardEntryOut])
