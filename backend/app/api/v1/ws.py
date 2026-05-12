@@ -2,8 +2,8 @@
 
 Phase 5 WS bootstrap protocol (Option A):
 1. On connect, server sends a one-shot ``bootstrap`` message containing all
-   station metadata (id, name, lat, lng, capacity) so the frontend can
-   initialise Leaflet markers without a separate REST call.
+   station metadata (id, name, x, y, capacity) so the frontend can
+   initialise the abstract canvas without a separate REST call.
 2. Server subscribes to ``EventBus`` "tick" events and forwards them as JSON.
 3. On disconnect, the subscription is cleaned up.
 
@@ -33,8 +33,8 @@ def _serialize_station(station: Any) -> dict[str, Any]:
     return {
         "station_id": station.station_id,
         "name": station.name,
-        "lat": station.position.lat,
-        "lng": station.position.lng,
+        "x": station.position.x,
+        "y": station.position.y,
         "capacity": station.capacity,
     }
 
