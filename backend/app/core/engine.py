@@ -307,7 +307,8 @@ class SimulationEngine:
             station_cap: dict[str, int] = {}
             for sid, station in self.city.stations.items():
                 station_inv[sid] = len(self.fleet.bikes_at_station(sid))
-                station_cap[sid] = station.capacity
+                override = self._station_capacity_overrides.get(sid, 0)
+                station_cap[sid] = station.capacity + override
 
             # Analyse and execute
             report = self.strategy.analyse(station_inv, station_cap)
