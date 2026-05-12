@@ -2,7 +2,8 @@
 
 import pytest
 
-from app.core.fleet import Bike, BikeStatus, Fleet, LatLng
+from app.core.coord import Coord
+from app.core.fleet import Bike, BikeStatus, Fleet
 
 
 def test_add_bike() -> None:
