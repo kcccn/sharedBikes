@@ -56,7 +56,6 @@ class NPC:
             return self.home_station
         return None
 
-    @property
     def is_commuting(self, tick_of_day: int) -> bool:
         """Whether this NPC is in a commute window at *tick_of_day*."""
         return (
@@ -64,12 +63,10 @@ class NPC:
             or _EVENING_COMMUTE_START <= tick_of_day < _EVENING_COMMUTE_END
         )
 
-    @property
     def is_at_work(self, tick_of_day: int) -> bool:
         """Whether this NPC is at their work station at *tick_of_day*."""
         return _WORK_START <= tick_of_day < _WORK_END
 
-    @property
     def is_at_home(self, tick_of_day: int) -> bool:
         """Whether this NPC is at home at *tick_of_day*."""
         return tick_of_day < _MORNING_COMMUTE_START or tick_of_day >= _EVENING_COMMUTE_END
