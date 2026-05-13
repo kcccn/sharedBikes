@@ -20,3 +20,4 @@
 - [docstring-drift-pattern](docstring-drift-pattern.md) — Docstring Drift — engine.py claimed phantom variables
 - [property-with-params-pitfall](property-with-params-pitfall.md) — @property decorator does not accept parameters — will TypeError at runtime
 - [roadmap-phase-d-synced](roadmap-phase-d-synced.md) — ROADMAP.md and tracker synced — Phase D marked complete
+- [engine-needs-async-drive-loop](engine-needs-async-drive-loop.md) — Engine needs async drive loop — start() alone doesn't tick
