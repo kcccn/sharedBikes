@@ -7,6 +7,12 @@ provides thin wrappers around the engine's lifecycle and query methods.
 Phase C: EngineManager now also owns a GameSession instance, drains the
 player command queue before each advance(), and exposes session info
 for WS tick messages and REST endpoints.
+
+Phase D (v0.4): EngineManager now owns:
+- ``NpcPopulation`` — NPC commuter population generated from city stations
+- ``SatisfactionTracker`` — per-station satisfaction updated every tick
+- ``CommuteDemandService`` — NPC-driven trip generation (replaces RuleBased)
+- ``CostAwareRebalanceStrategy`` — cost-aware dispatch (replaces GreedyThreshold)
 """
 
 from __future__ import annotations
@@ -17,11 +23,13 @@ from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
 from app.core.fleet import Bike, Fleet
-from app.core.scheduler import GreedyThresholdStrategy
+from app.core.satisfaction import SatisfactionTracker
+from app.core.scheduler import CostAwareRebalanceStrategy, DispatchCost
 from app.core.weather import Environment
+from app.models.npc import NpcPopulation
 from app.models.schemas import BikeOut, EventOut, FleetOut, SimStatusOut
 from app.services.command_handler import CommandHandler
-from app.services.demand_service import RuleBasedDemandService
+from app.services.demand_service import CommuteDemandService
 from app.services.game_session import (
     CommandAction,
     GameSession,
@@ -50,6 +58,9 @@ class EngineManager:
             # Cached tick data for WS consumption
             cls._instance._last_tick_balance: float = 0.0
             cls._instance._last_daily_report: SessionDailyReport | None = None
+            # Phase D: NPC + satisfaction
+            cls._instance._npc_population: NpcPopulation | None = None
+            cls._instance._satisfaction_tracker: SatisfactionTracker | None = None
         return cls._instance
 
     # ── engine lifecycle ──────────────────────────────────────────
@@ -74,6 +85,8 @@ class EngineManager:
         Phase 4: wires the global EventBus singleton so tick events are
         published for WebSocket broadcaster, AchievementEngine, etc.
         Phase C: creates a fresh GameSession.
+        Phase D: creates NpcPopulation, SatisfactionTracker,
+        CommuteDemandService, and CostAwareRebalanceStrategy.
         """
         city = self._map_service.load_city(city_name)
         fleet = self._build_starter_fleet()
@@ -85,8 +98,26 @@ class EngineManager:
                 bike.station_id = station_ids[i % len(station_ids)]
 
         environment = Environment()
-        strategy = GreedyThresholdStrategy()
-        trip_generator = RuleBasedDemandService()
+
+        # Phase D: NPC population + satisfaction tracking
+        self._npc_population = NpcPopulation.generate(city, scale=100)
+        station_ids_list = list(city.stations.keys())
+        self._satisfaction_tracker = SatisfactionTracker(station_ids_list)
+
+        # Phase D: CommuteDemandService (replaces RuleBasedDemandService)
+        trip_generator = CommuteDemandService(
+            population=self._npc_population,
+            satisfaction_tracker=self._satisfaction_tracker,
+        )
+
+        # Phase D: CostAwareRebalanceStrategy (replaces GreedyThresholdStrategy)
+        strategy = CostAwareRebalanceStrategy(
+            distance_fn=city.shortest_path_distance,
+            station_positions={sid: st.position for sid, st in city.stations.items()},
+            budget=1000.0,
+            dispatch_cost=DispatchCost(),
+        )
+
         engine_event_bus = EventBus()
         self._engine = SimulationEngine(
             city=city,
@@ -134,10 +165,28 @@ class EngineManager:
         assert self._station_stats_tracker is not None
         return self._station_stats_tracker
 
+    @property
+    def npc_population(self) -> NpcPopulation:
+        """Lazily initialised NpcPopulation (wired in _init_engine)."""
+        if self._npc_population is None:
+            self._init_engine()
+        assert self._npc_population is not None
+        return self._npc_population
+
+    @property
+    def satisfaction_tracker(self) -> SatisfactionTracker:
+        """Lazily initialised SatisfactionTracker (wired in _init_engine)."""
+        if self._satisfaction_tracker is None:
+            self._init_engine()
+        assert self._satisfaction_tracker is not None
+        return self._satisfaction_tracker
+
     def reset_engine(self, city_name: str = "default") -> None:
         """Force-recreate the engine (e.g. when the user wants a fresh sim)."""
         self._engine = None
         self._station_stats_tracker = None
+        self._npc_population = None
+        self._satisfaction_tracker = None
         self._init_engine(city_name)
 
     # ── Phase C: session API ──────────────────────────────────────
@@ -206,8 +255,53 @@ class EngineManager:
             self.session.record_result(result)
 
     def _capture_tick_state(self) -> None:
-        """Capture balance and daily report after engine advance."""
+        """Capture balance and daily report after engine advance.
+
+        Phase D: also updates SatisfactionTracker and resets strategy
+        budget at day boundaries.
+        """
         self._last_tick_balance = self.session.player_balance
+
+        # Phase D: update satisfaction tracker with current station state
+        station_ids = list(self.engine.city.stations.keys())
+        inventory: dict[str, int] = {}
+        capacity: dict[str, int] = {}
+        for sid in station_ids:
+            inventory[sid] = len(self.engine.fleet.bikes_at_station(sid))
+            station_obj = self.engine.city.stations.get(sid)
+            capacity[sid] = station_obj.capacity if station_obj else 0
+
+        # Get missed events from the last tick events if available
+        recent = self.engine.recent_events
+        last_events = recent[-1] if recent else None
+
+        if last_events is not None:
+            # For now, missed_returns/pickups are estimated from empty/full states
+            missed_returns: dict[str, int] = {}
+            missed_pickups: dict[str, int] = {}
+            for sid in station_ids:
+                inv = inventory.get(sid, 0)
+                cap = capacity.get(sid, 1)
+                if cap > 0 and inv == 0:
+                    missed_pickups[sid] = 1  # station empty → likely missed pickup
+                if cap > 0 and inv >= cap:
+                    missed_returns[sid] = 1  # station full → likely missed return
+
+            self.satisfaction_tracker.update(
+                inventory=inventory,
+                capacity=capacity,
+                missed_returns=missed_returns,
+                missed_pickups=missed_pickups,
+            )
+
+        # Phase D: reset strategy budget at day boundary
+        tick = self.engine.tick
+        if tick > 0 and tick % self.engine.ticks_per_day == 0:
+            from app.core.scheduler import CostAwareRebalanceStrategy
+
+            strat = self.engine.strategy
+            if isinstance(strat, CostAwareRebalanceStrategy):
+                strat.reset_budget()
 
         # Check if a new daily report was generated by the engine
         engine_reports = self.engine.daily_reports

@@ -17,6 +17,14 @@ Phase 4 adds event bus integration:
 - After each ``_tick()`` the engine publishes a ``"tick"`` event on ``EventBus``
 - WebSocket broadcaster, AchievementEngine, and other consumers subscribe
   without coupling to the engine's internals
+
+Phase D (v0.4) adds:
+- ``SatisfactionTracker`` type import (used in ``engine_manager.py`` for
+  satisfaction tracking, demand feedback, and strategy budget reset at day
+  boundaries).
+- Phase D core logic lives in ``engine_manager.py`` (wiring),
+  ``satisfaction.py`` (tracker), ``scheduler.py`` (cost-aware strategy),
+  ``demand_service.py`` (commute demand), and ``npc.py`` (population).
 """
 
 from __future__ import annotations
@@ -28,6 +36,7 @@ from typing import TYPE_CHECKING, Callable
 from app.core.city import City
 from app.core.costing import CostEngine
 from app.core.fleet import Fleet, FleetSnapshot
+from app.core.satisfaction import SatisfactionTracker
 from app.core.scheduler import RebalanceStrategy
 from app.core.weather import Environment
 

@@ -1,12 +1,22 @@
-"""Demand service — generates trip requests per tick."""
+"""Demand service — generates trip requests per tick.
+
+Phase D (v0.4): Adds ``CommuteDemandService`` — an NPC-driven trip
+generator that produces realistic commute patterns with satisfaction
+feedback. ``RuleBasedDemandService`` remains as a configurable fallback.
+"""
 
 from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from app.core.city import Station
+from app.models.npc import NpcPopulation
+
+if TYPE_CHECKING:
+    from app.core.city import Station
+    from app.core.satisfaction import SatisfactionTracker
 
 
 @dataclass
@@ -113,3 +123,136 @@ class RuleBasedDemandService(TripGenerator):
         ratio = current_price / self.reference_price
         elastic_factor = 1.0 + self.price_elasticity * (ratio - 1.0)
         return base_rate * max(0.0, elastic_factor)
+
+
+# ── Phase D: NPC commute demand ──────────────────────────────────
+
+
+class CommuteDemandService(TripGenerator):
+    """NPC-driven trip generator with commute patterns and satisfaction feedback.
+
+    Generates trips based on NPC home/work station assignments:
+    - Morning peak (06:00-08:00): home → work directional flow
+    - Evening peak (17:00-19:00): work → home directional flow
+    - Off-peak: random short leisure trips at reduced rate
+
+    Integrates with ``SatisfactionTracker``: stations with low satisfaction
+    produce fewer trips (NPCs avoid them or churn).
+
+    Replaces ``RuleBasedDemandService`` as the default trip generator.
+    """
+
+    def __init__(
+        self,
+        population: NpcPopulation,
+        satisfaction_tracker: SatisfactionTracker | None = None,
+        off_peak_rate: float = 0.01,
+        price_elasticity: float = -0.3,
+        reference_price: float = _REFERENCE_PRICE_PER_30MIN,
+        sample_frac_peak: float = 0.3,
+        sample_frac_offpeak: float = 0.05,
+    ) -> None:
+        """Initialise the commute demand service.
+
+        Args:
+            population: NPC population with home/work station assignments.
+            satisfaction_tracker: Optional tracker for satisfaction feedback.
+            off_peak_rate: Fraction of stations generating trips per off-peak tick.
+            price_elasticity: Elasticity factor for price-based demand adjustment.
+            reference_price: Reference price for elasticity calculation.
+            sample_frac_peak: Fraction of commuting NPCs to sample per peak tick.
+            sample_frac_offpeak: Fraction of stations generating off-peak trips.
+        """
+        self._population = population
+        self._satisfaction_tracker = satisfaction_tracker
+        self._off_peak_rate = off_peak_rate
+        self._price_elasticity = price_elasticity
+        self._reference_price = reference_price
+        self._sample_frac_peak = sample_frac_peak
+        self._sample_frac_offpeak = sample_frac_offpeak
+
+        self._rng = random.Random()
+
+    def generate(
+        self, tick: int, stations: dict[str, Station]
+    ) -> list[TripRequest]:
+        if not stations:
+            return []
+
+        tick_of_day = tick % 1440
+        hour = tick_of_day // 60
+        is_morning_peak = 6 <= hour < 8
+        is_evening_peak = 17 <= hour < 19
+        is_peak = is_morning_peak or is_evening_peak
+
+        trips: list[TripRequest] = []
+
+        if is_peak:
+            # Commute trips: directional flows
+            trips = self._generate_commute_trips(tick_of_day, stations, is_morning_peak)
+        else:
+            # Off-peak: random short leisure trips
+            trips = self._generate_leisure_trips(tick_of_day, stations)
+
+        # Apply satisfaction feedback if tracker is available
+        if self._satisfaction_tracker is not None and trips:
+            multipliers = self._satisfaction_tracker.demand_multipliers()
+            filtered: list[TripRequest] = []
+            for trip in trips:
+                multiplier = multipliers.get(trip.from_station, 1.0)
+                if multiplier >= 1.0 or self._rng.random() < multiplier:
+                    filtered.append(trip)
+            trips = filtered
+
+        return trips
+
+    def _generate_commute_trips(
+        self,
+        tick_of_day: int,
+        stations: dict[str, Station],
+        is_morning: bool,
+    ) -> list[TripRequest]:
+        """Generate commute-direction trips from NPC population."""
+        trips: list[TripRequest] = []
+        station_ids = list(stations.keys())
+
+        for sid in station_ids:
+            commuters = self._population.get_commuters(
+                tick_of_day, sid, sample_frac=self._sample_frac_peak
+            )
+            for npc in commuters:
+                destination = npc.work_station if is_morning else npc.home_station
+                # Ensure destination is valid
+                if destination in stations and destination != sid:
+                    trips.append(TripRequest(
+                        from_station=sid,
+                        to_station=destination,
+                    ))
+
+        return trips
+
+    def _generate_leisure_trips(
+        self,
+        tick_of_day: int,
+        stations: dict[str, Station],
+    ) -> list[TripRequest]:
+        """Generate random off-peak leisure/errand trips."""
+        if not stations or self._off_peak_rate <= 0:
+            return []
+
+        station_ids = list(stations.keys())
+        n_trips = max(0, int(len(stations) * self._off_peak_rate * self._rng.uniform(0.8, 1.2)))
+        if n_trips == 0:
+            return []
+
+        trips: list[TripRequest] = []
+        for _ in range(n_trips):
+            from_sid = self._rng.choice(station_ids)
+            to_sid = self._rng.choice(station_ids)
+            if from_sid != to_sid:
+                trips.append(TripRequest(
+                    from_station=from_sid,
+                    to_station=to_sid,
+                ))
+
+        return trips
