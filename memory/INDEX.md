@@ -15,3 +15,4 @@
 - [phase-c-game-loop-complete](phase-c-game-loop-complete.md) — Phase C Complete — Game Loop & Player Decision Implementation
 - [roadmap-md-sync-after-merge](roadmap-md-sync-after-merge.md) — ROADMAP.md 同步模式 — merge 后立即检查 doc drift
 - [arch-doc-phase-c-status-fixed](arch-doc-phase-c-status-fixed.md) — Architecture Doc Synced — Phase C ✅
+- [phase-d-npc-commute-rfc-dispatched](phase-d-npc-commute-rfc-dispatched.md) — Phase D RFC Created — NPC Commute + Cost vs Satisfaction
