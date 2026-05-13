@@ -19,11 +19,12 @@ Phase 4 adds event bus integration:
   without coupling to the engine's internals
 
 Phase D (v0.4) adds:
-- Satisfaction tracking: ``SatisfactionTracker`` monitors station health,
-  feeds back into demand generation, and resets strategy budget at day
-  boundaries.
-- Inventory + capacity tracking: ``_station_inventory_history`` and
-  ``_station_capacity_history`` cached per tick for satisfaction updates.
+- ``SatisfactionTracker`` type import (used in ``engine_manager.py`` for
+  satisfaction tracking, demand feedback, and strategy budget reset at day
+  boundaries).
+- Phase D core logic lives in ``engine_manager.py`` (wiring),
+  ``satisfaction.py`` (tracker), ``scheduler.py`` (cost-aware strategy),
+  ``demand_service.py`` (commute demand), and ``npc.py`` (population).
 """
 
 from __future__ import annotations

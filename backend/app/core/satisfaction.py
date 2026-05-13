@@ -33,11 +33,11 @@ class StationHealth:
 
 # ── decay/recovery rates (per tick ≈ per minute) ────────────────
 
-_SATURATION_DECAY_PER_TICK_EMPTY = 0.002   # ~3 days to go from 1.0 → 0.0 if always empty
-_SATURATION_DECAY_PER_TICK_FULL = 0.001    # full is less damaging than empty
-_SATURATION_RECOVERY_PER_TICK = 0.0005     # ~1.5 days to recover from 0.0 → 1.0
-_SATURATION_CHURN_THRESHOLD = 0.3          # below this → demand reduction
-_SATURATION_CRITICAL_THRESHOLD = 0.15      # below this → NPC churn alert
+_SATISFACTION_DECAY_PER_TICK_EMPTY = 0.002   # ~3 days to go from 1.0 → 0.0 if always empty
+_SATISFACTION_DECAY_PER_TICK_FULL = 0.001    # full is less damaging than empty
+_SATISFACTION_RECOVERY_PER_TICK = 0.0005     # ~1.5 days to recover from 0.0 → 1.0
+_SATISFACTION_CHURN_THRESHOLD = 0.3          # below this → demand reduction
+_SATISFACTION_CRITICAL_THRESHOLD = 0.15      # below this → NPC churn alert
 
 
 class SatisfactionTracker:
@@ -88,14 +88,14 @@ class SatisfactionTracker:
 
             # Decay
             if is_empty:
-                health.satisfaction = max(0.0, health.satisfaction - _SATURATION_DECAY_PER_TICK_EMPTY)
+                health.satisfaction = max(0.0, health.satisfaction - _SATISFACTION_DECAY_PER_TICK_EMPTY)
                 health.hours_empty += 1
             elif is_full:
-                health.satisfaction = max(0.0, health.satisfaction - _SATURATION_DECAY_PER_TICK_FULL)
+                health.satisfaction = max(0.0, health.satisfaction - _SATISFACTION_DECAY_PER_TICK_FULL)
                 health.hours_full += 1
             else:
                 # Recovery when healthy
-                health.satisfaction = min(1.0, health.satisfaction + _SATURATION_RECOVERY_PER_TICK)
+                health.satisfaction = min(1.0, health.satisfaction + _SATISFACTION_RECOVERY_PER_TICK)
 
             # Missed events (each missed event is a significant satisfaction hit)
             if missed_returns:
@@ -123,13 +123,13 @@ class SatisfactionTracker:
             return 1.0
 
         sat = health.satisfaction
-        if sat >= _SATURATION_CHURN_THRESHOLD:
+        if sat >= _SATISFACTION_CHURN_THRESHOLD:
             return 1.0
-        if sat <= _SATURATION_CRITICAL_THRESHOLD:
+        if sat <= _SATISFACTION_CRITICAL_THRESHOLD:
             return 0.0
         # Linear interpolation between thresholds
-        t = (sat - _SATURATION_CRITICAL_THRESHOLD) / (
-            _SATURATION_CHURN_THRESHOLD - _SATURATION_CRITICAL_THRESHOLD
+        t = (sat - _SATISFACTION_CRITICAL_THRESHOLD) / (
+            _SATISFACTION_CHURN_THRESHOLD - _SATISFACTION_CRITICAL_THRESHOLD
         )
         return max(0.0, t)
 
@@ -149,7 +149,7 @@ class SatisfactionTracker:
         """Stations with satisfaction below critical threshold."""
         return [
             sid for sid, h in self._stations.items()
-            if h.satisfaction < _SATURATION_CRITICAL_THRESHOLD
+            if h.satisfaction < _SATISFACTION_CRITICAL_THRESHOLD
         ]
 
     @property
@@ -157,5 +157,5 @@ class SatisfactionTracker:
         """Stations with satisfaction below warning threshold (but not critical)."""
         return [
             sid for sid, h in self._stations.items()
-            if _SATURATION_CRITICAL_THRESHOLD <= h.satisfaction < _SATURATION_CHURN_THRESHOLD
+            if _SATISFACTION_CRITICAL_THRESHOLD <= h.satisfaction < _SATISFACTION_CHURN_THRESHOLD
         ]
