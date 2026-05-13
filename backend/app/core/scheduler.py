@@ -1,13 +1,44 @@
-"""Rebalancing scheduler — decides when and where to move bikes."""
+"""Rebalancing scheduler — decides when and where to move bikes.
+
+Phase D (v0.4): Adds ``DispatchCost`` dataclass and
+``CostAwareRebalanceStrategy`` — a strategy that scores dispatch
+orders by (benefit - cost) and respects a daily budget constraint.
+
+Architecture invariant: ``RebalanceStrategy.analyse()`` signature is
+locked. New strategies receive static/ambient data via constructor
+injection, not by modifying the abstract interface.
+"""
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from app.core.fleet import Fleet
+
+
+# ── dispatch cost model ─────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class DispatchCost:
+    """Cost parameters for a single rebalancing dispatch operation.
+
+    Used by ``CostAwareRebalanceStrategy`` to score candidate orders::
+
+        total_cost = fixed_cost + distance * per_km_cost + n_bikes * per_bike_cost
+    """
+
+    fixed_cost: float = 10.0       # per dispatch truck trip
+    per_km_cost: float = 2.0       # per unit distance (km along road network)
+    per_bike_cost: float = 0.5     # per bike loaded/unloaded
+
+    def total(self, distance_km: float, n_bikes: int) -> float:
+        """Compute total cost for a dispatch order."""
+        return self.fixed_cost + distance_km * self.per_km_cost + n_bikes * self.per_bike_cost
 
 
 @dataclass(frozen=True)
