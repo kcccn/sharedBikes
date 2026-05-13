@@ -126,6 +126,12 @@ class SimulationEngine:
     # Phase 4: event bus (lazy-initialised singleton)
     event_bus: object | None = None
 
+    # Phase D: satisfaction tracking
+    satisfaction_tracker: object | None = None  # SatisfactionTracker
+
+    # Phase D: dispatch budget for cost-aware rebalancing
+    dispatch_budget: object | None = None  # DispatchBudget
+
     state: SimState = SimState.STOPPED
     tick: int = 0
     ticks_per_day: int = 1440
