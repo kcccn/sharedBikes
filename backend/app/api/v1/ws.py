@@ -78,6 +78,10 @@ def _serialize_tick(
     if demand_factors is not None:
         payload["demand_factors"] = demand_factors
 
+    # Phase D: station satisfaction snapshot
+    if event.station_satisfaction:
+        payload["station_satisfaction"] = dict(event.station_satisfaction)
+
     # Phase C: player-facing data
     if balance is not None:
         payload["balance"] = round(balance, 2)
