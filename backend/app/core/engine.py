@@ -32,8 +32,10 @@ from app.core.scheduler import RebalanceStrategy
 from app.core.weather import Environment
 
 if TYPE_CHECKING:
+    from app.core.dispatch_cost import DispatchBudget
     from app.core.finance import LedgerEntry
     from app.core.pricing import PricingTier
+    from app.core.satisfaction import SatisfactionTracker
     from app.core.trip_executor import ActiveTrip, TripExecutor
     from app.services.demand_service import TripGenerator, TripRequest
 
