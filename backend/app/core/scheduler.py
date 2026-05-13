@@ -155,3 +155,173 @@ class GreedyThresholdStrategy(RebalanceStrategy):
             healthy_stations=healthy,
             suggested_orders=orders,
         )
+
+
+# ── Phase D: cost-aware rebalancing ─────────────────────────────
+
+
+class CostAwareRebalanceStrategy(RebalanceStrategy):
+    """Dispatch orders scored by (benefit - cost), respecting budget.
+
+    Constructor injection (not ``analyse()`` signature change)::
+
+        strategy = CostAwareRebalanceStrategy(
+            distance_fn=city.shortest_path_distance,
+            station_positions=station_positions,  # station_id → Coord
+            budget=1000.0,
+        )
+
+    Benefit is measured as starvation-risk reduction: how "saved" a
+    starving station would be by receiving *n* bikes. Cost is computed
+    via ``DispatchCost`` including distance, fixed truck cost, and
+    per-bike handling.
+    """
+
+    def __init__(
+        self,
+        distance_fn: Callable[[str, str], float | None],
+        station_positions: dict[str, object] | None = None,
+        budget: float = 1000.0,
+        dispatch_cost: DispatchCost | None = None,
+        benefit_per_bike: float = 5.0,
+        max_orders_per_tick: int = 5,
+    ) -> None:
+        """Initialise the cost-aware strategy.
+
+        Args:
+            distance_fn: Callable[str, str] -> float | None, used to get
+                road-network distance between two station IDs. Typically
+                ``City.shortest_path_distance``.
+            station_positions: Optional mapping of station_id → position
+                objects. Used for diagnostics only (distance is computed
+                via ``distance_fn``).
+            budget: Daily dispatch budget. Total dispatch cost per tick
+                is limited by remaining budget.
+            dispatch_cost: Cost parameters. Uses defaults if not specified.
+            benefit_per_bike: How much "benefit" (in currency units) each
+                bike delivered to a starving station provides.
+            max_orders_per_tick: Maximum number of dispatch orders to
+                generate per tick.
+        """
+        self._distance_fn = distance_fn
+        self._station_positions = station_positions or {}
+        self._budget = budget
+        self._dispatch_cost = dispatch_cost or DispatchCost()
+        self._benefit_per_bike = benefit_per_bike
+        self._max_orders_per_tick = max_orders_per_tick
+        self._budget_spent: float = 0.0
+
+    @property
+    def budget_remaining(self) -> float:
+        """Remaining dispatch budget."""
+        return max(0.0, self._budget - self._budget_spent)
+
+    def reset_budget(self) -> None:
+        """Reset the daily budget counter (call at day boundary)."""
+        self._budget_spent = 0.0
+
+    def set_budget(self, budget: float) -> None:
+        """Update the daily budget (for dynamic adjustments)."""
+        self._budget = budget
+
+    def analyse(
+        self,
+        station_inventory: dict[str, int],
+        station_capacity: dict[str, int],
+        threshold_low: float = 0.2,
+        threshold_high: float = 0.8,
+    ) -> FleetBalanceReport:
+        starving: list[str] = []
+        overflowing: list[str] = []
+        healthy: list[str] = []
+
+        for sid, cap in station_capacity.items():
+            if cap <= 0:
+                healthy.append(sid)
+                continue
+            inv = station_inventory.get(sid, 0)
+            ratio = inv / cap
+            if ratio < threshold_low:
+                starving.append(sid)
+            elif ratio > threshold_high:
+                overflowing.append(sid)
+            else:
+                healthy.append(sid)
+
+        if not starving or not overflowing:
+            return FleetBalanceReport(
+                starving_stations=starving,
+                overflowing_stations=overflowing,
+                healthy_stations=healthy,
+            )
+
+        # Score candidate orders by net benefit
+        candidates: list[tuple[float, str, str, int]] = []
+
+        for oid in overflowing:
+            inv = station_inventory.get(oid, 0)
+            cap = station_capacity.get(oid, 1)
+            # How many bikes can we take from this overflowing station?
+            excess = inv - int(cap * threshold_high)
+            if excess <= 0:
+                continue
+
+            for sid in starving:
+                distance = self._distance_fn(oid, sid)
+                if distance is None:
+                    distance = 2.0  # fallback
+
+                # How many bikes does the starving station need?
+                need = int(cap * threshold_low) - station_inventory.get(sid, 0)
+                if need <= 0:
+                    continue
+
+                n_bikes = min(excess, need, 3)  # max 3 per order
+
+                cost = self._dispatch_cost.total(distance, n_bikes)
+                benefit = n_bikes * self._benefit_per_bike
+                net_benefit = benefit - cost
+
+                candidates.append((net_benefit, oid, sid, n_bikes))
+
+        # Sort by net benefit descending
+        candidates.sort(key=lambda x: x[0], reverse=True)
+
+        orders: list[DispatchOrder] = []
+        order_id = 0
+        remaining = self.budget_remaining
+
+        for net_benefit, oid, sid, n_bikes in candidates:
+            if order_id >= self._max_orders_per_tick:
+                break
+
+            distance = self._distance_fn(oid, sid) or 2.0
+            cost = self._dispatch_cost.total(distance, n_bikes)
+
+            # Skip if this order would exceed budget
+            if cost > remaining:
+                continue
+
+            # Only dispatch if net benefit is positive
+            if net_benefit <= 0:
+                continue
+
+            orders.append(
+                DispatchOrder(
+                    order_id=f"cost-aware-order-{order_id}",
+                    from_station=oid,
+                    to_station=sid,
+                    count=n_bikes,
+                    priority=int(net_benefit),
+                )
+            )
+            self._budget_spent += cost
+            remaining -= cost
+            order_id += 1
+
+        return FleetBalanceReport(
+            starving_stations=starving,
+            overflowing_stations=overflowing,
+            healthy_stations=healthy,
+            suggested_orders=orders,
+        )
