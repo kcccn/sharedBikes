@@ -246,7 +246,12 @@ async def simulation_ws(websocket: WebSocket) -> None:
         _closed = True
         bus.unsubscribe("tick", key=conn_key)
         reader_task.cancel()
+        engine_drive_task.cancel()
         try:
             await reader_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        try:
+            await engine_drive_task
         except (asyncio.CancelledError, Exception):
             pass
