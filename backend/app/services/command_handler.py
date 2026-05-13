@@ -184,9 +184,8 @@ class CommandHandler:
             engine.fleet.add_bike(bike)
             new_bikes.append(bike_id)
 
-        # Deduct from player balance
+        # Deduct from player balance (handled by _drain_commands → record_result)
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"购买 {count} 辆单车")
 
         # Record in engine's ledger as a cost entry
         from app.core.finance import LedgerEntry, CostCategory
