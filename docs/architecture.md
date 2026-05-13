@@ -369,3 +369,8 @@ CommandHandler
 | C4 | 前端点击事件 → 站点操作面板 | ✅ **已完成** |
 | C5 | 前端仪表盘（余额/收入/日报告） | ✅ **已完成** |
 | C6 | 集成测试 | ✅ **已完成** |
+| **D** | **NPC 通勤 · 调度成本 vs 满意度（v0.4 能赢）** | ✅ **完成** |
+| D1 | NPC Commute Model — 通勤需求生成与分配 | ✅ **已完成** |
+| D2 | Cost-Aware Rebalancing — 调度成本感知策略 | ✅ **已完成** |
+| D3 | Satisfaction Tracking — 站点满意度追踪 | ✅ **已完成** |
+| D4 | Review fixes & code quality | ✅ **已完成** |
