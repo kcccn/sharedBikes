@@ -5,8 +5,13 @@ from __future__ import annotations
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from app.core.city import Station
+
+if TYPE_CHECKING:
+    from app.core.satisfaction import SatisfactionTracker
+    from app.models.npc import NpcPopulation
 
 
 @dataclass
