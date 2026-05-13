@@ -33,11 +33,11 @@ class StationHealth:
 
 # ── decay/recovery rates (per tick ≈ per minute) ────────────────
 
-_SATURATION_DECAY_PER_TICK_EMPTY = 0.002   # ~3 days to go from 1.0 → 0.0 if always empty
-_SATURATION_DECAY_PER_TICK_FULL = 0.001    # full is less damaging than empty
-_SATURATION_RECOVERY_PER_TICK = 0.0005     # ~1.5 days to recover from 0.0 → 1.0
-_SATURATION_CHURN_THRESHOLD = 0.3          # below this → demand reduction
-_SATURATION_CRITICAL_THRESHOLD = 0.15      # below this → NPC churn alert
+_SATISFACTION_DECAY_PER_TICK_EMPTY = 0.002   # ~3 days to go from 1.0 → 0.0 if always empty
+_SATISFACTION_DECAY_PER_TICK_FULL = 0.001    # full is less damaging than empty
+_SATISFACTION_RECOVERY_PER_TICK = 0.0005     # ~1.5 days to recover from 0.0 → 1.0
+_SATISFACTION_CHURN_THRESHOLD = 0.3          # below this → demand reduction
+_SATISFACTION_CRITICAL_THRESHOLD = 0.15      # below this → NPC churn alert
 
 
 class SatisfactionTracker:
