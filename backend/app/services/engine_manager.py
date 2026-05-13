@@ -165,10 +165,28 @@ class EngineManager:
         assert self._station_stats_tracker is not None
         return self._station_stats_tracker
 
+    @property
+    def npc_population(self) -> NpcPopulation:
+        """Lazily initialised NpcPopulation (wired in _init_engine)."""
+        if self._npc_population is None:
+            self._init_engine()
+        assert self._npc_population is not None
+        return self._npc_population
+
+    @property
+    def satisfaction_tracker(self) -> SatisfactionTracker:
+        """Lazily initialised SatisfactionTracker (wired in _init_engine)."""
+        if self._satisfaction_tracker is None:
+            self._init_engine()
+        assert self._satisfaction_tracker is not None
+        return self._satisfaction_tracker
+
     def reset_engine(self, city_name: str = "default") -> None:
         """Force-recreate the engine (e.g. when the user wants a fresh sim)."""
         self._engine = None
         self._station_stats_tracker = None
+        self._npc_population = None
+        self._satisfaction_tracker = None
         self._init_engine(city_name)
 
     # ── Phase C: session API ──────────────────────────────────────
