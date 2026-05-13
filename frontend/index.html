@@ -236,6 +236,9 @@
       /** Heatmap demand factors: stationId -> factor [0,1] */
       const demandFactors = new Map();
 
+      /** Phase D: Station satisfaction: stationId -> satisfaction [0,1] */
+      const stationSatisfaction = new Map();
+
       let cellSize = 0;
       let gridOffsetX = 0;
       let gridOffsetY = 0;
