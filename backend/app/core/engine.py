@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Callable
 from app.core.city import City
 from app.core.costing import CostEngine
 from app.core.fleet import Fleet, FleetSnapshot
+from app.core.satisfaction import SatisfactionTracker
 from app.core.scheduler import RebalanceStrategy
 from app.core.weather import Environment
 
