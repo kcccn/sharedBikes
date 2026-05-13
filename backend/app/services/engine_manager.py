@@ -14,14 +14,17 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
+from app.core.dispatch_cost import DispatchBudget
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
 from app.core.fleet import Bike, Fleet
-from app.core.scheduler import GreedyThresholdStrategy
+from app.core.satisfaction import SatisfactionTracker
+from app.core.scheduler import CostAwareRebalanceStrategy, GreedyThresholdStrategy
 from app.core.weather import Environment
+from app.models.npc import NpcPopulation
 from app.models.schemas import BikeOut, EventOut, FleetOut, SimStatusOut
 from app.services.command_handler import CommandHandler
-from app.services.demand_service import RuleBasedDemandService
+from app.services.demand_service import CommuteDemandService, RuleBasedDemandService
 from app.services.game_session import (
     CommandAction,
     GameSession,
