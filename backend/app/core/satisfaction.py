@@ -95,7 +95,7 @@ class SatisfactionTracker:
                 health.hours_full += 1
             else:
                 # Recovery when healthy
-                health.satisfaction = min(1.0, health.satisfaction + _SATURATION_RECOVERY_PER_TICK)
+                health.satisfaction = min(1.0, health.satisfaction + _SATISFACTION_RECOVERY_PER_TICK)
 
             # Missed events (each missed event is a significant satisfaction hit)
             if missed_returns:
