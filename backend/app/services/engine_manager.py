@@ -85,6 +85,8 @@ class EngineManager:
         Phase 4: wires the global EventBus singleton so tick events are
         published for WebSocket broadcaster, AchievementEngine, etc.
         Phase C: creates a fresh GameSession.
+        Phase D: creates NpcPopulation, SatisfactionTracker,
+        CommuteDemandService, and CostAwareRebalanceStrategy.
         """
         city = self._map_service.load_city(city_name)
         fleet = self._build_starter_fleet()
@@ -96,8 +98,26 @@ class EngineManager:
                 bike.station_id = station_ids[i % len(station_ids)]
 
         environment = Environment()
-        strategy = GreedyThresholdStrategy()
-        trip_generator = RuleBasedDemandService()
+
+        # Phase D: NPC population + satisfaction tracking
+        self._npc_population = NpcPopulation.generate(city, scale=100)
+        station_ids_list = list(city.stations.keys())
+        self._satisfaction_tracker = SatisfactionTracker(station_ids_list)
+
+        # Phase D: CommuteDemandService (replaces RuleBasedDemandService)
+        trip_generator = CommuteDemandService(
+            population=self._npc_population,
+            satisfaction_tracker=self._satisfaction_tracker,
+        )
+
+        # Phase D: CostAwareRebalanceStrategy (replaces GreedyThresholdStrategy)
+        strategy = CostAwareRebalanceStrategy(
+            distance_fn=city.shortest_path_distance,
+            station_positions={sid: st.position for sid, st in city.stations.items()},
+            budget=1000.0,
+            dispatch_cost=DispatchCost(),
+        )
+
         engine_event_bus = EventBus()
         self._engine = SimulationEngine(
             city=city,
