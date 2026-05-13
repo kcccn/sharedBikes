@@ -149,7 +149,7 @@ class SatisfactionTracker:
         """Stations with satisfaction below critical threshold."""
         return [
             sid for sid, h in self._stations.items()
-            if h.satisfaction < _SATURATION_CRITICAL_THRESHOLD
+            if h.satisfaction < _SATISFACTION_CRITICAL_THRESHOLD
         ]
 
     @property
