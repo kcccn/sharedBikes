@@ -312,16 +312,28 @@ class SimulationEngine:
             )
             ledger_entries.append(entry)
 
-        # ── 5. (Phase 3) Rebalance — every rebalance_interval ticks ──
+        # ── 5. (Phase D) Update satisfaction before rebalancing ──
+        station_inv: dict[str, int] = {}
+        station_cap: dict[str, int] = {}
+        for sid, station in self.city.stations.items():
+            station_inv[sid] = len(self.fleet.bikes_at_station(sid))
+            override = self._station_capacity_overrides.get(sid, 0)
+            station_cap[sid] = station.capacity + override
+
+        if self.satisfaction_tracker is not None:
+            self.satisfaction_tracker.update(self.tick, station_inv, station_cap)
+
+        # ── 6. (Phase 3) Rebalance — every rebalance_interval ticks ──
         dispatch_movements: list[tuple[str, str, int]] = []
         if self.tick % self.rebalance_interval == 0 and self.city.stations:
-            # Build station inventory/capacity snapshots
-            station_inv: dict[str, int] = {}
-            station_cap: dict[str, int] = {}
-            for sid, station in self.city.stations.items():
-                station_inv[sid] = len(self.fleet.bikes_at_station(sid))
-                override = self._station_capacity_overrides.get(sid, 0)
-                station_cap[sid] = station.capacity + override
+            # Reset dispatch budget at day boundary
+            if self.dispatch_budget is not None:
+                self.dispatch_budget.reset_if_new_day(self.day_number)
+
+            # For CostAwareRebalanceStrategy: set station positions
+            if hasattr(self.strategy, "set_station_positions"):
+                positions = {sid: s.position for sid, s in self.city.stations.items()}
+                self.strategy.set_station_positions(positions)
 
             # Analyse and execute
             report = self.strategy.analyse(station_inv, station_cap)
@@ -331,6 +343,18 @@ class SimulationEngine:
                     self.fleet,
                     valid_stations=set(self.city.stations.keys()),
                 )
+
+            # Track dispatch cost in budget
+            if dispatch_movements and self.dispatch_budget is not None:
+                from app.core.dispatch_cost import calculate_dispatch_cost
+
+                total_cost = 0.0
+                for f, t, c in dispatch_movements:
+                    a_pos = self.city.stations[f].position if f in self.city.stations else None
+                    b_pos = self.city.stations[t].position if t in self.city.stations else None
+                    dist = a_pos.distance_to(b_pos) if a_pos is not None and b_pos is not None else 2.0
+                    total_cost += calculate_dispatch_cost(dist, c)
+                self.dispatch_budget.spent_today += total_cost
 
             # Post dispatch cost/fee entries to ledger
             if dispatch_movements and self.cost_engine is not None:
