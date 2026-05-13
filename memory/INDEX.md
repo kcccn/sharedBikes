@@ -16,3 +16,4 @@
 - [roadmap-md-sync-after-merge](roadmap-md-sync-after-merge.md) — ROADMAP.md 同步模式 — merge 后立即检查 doc drift
 - [arch-doc-phase-c-status-fixed](arch-doc-phase-c-status-fixed.md) — Architecture Doc Synced — Phase C ✅
 - [phase-d-npc-commute-rfc-dispatched](phase-d-npc-commute-rfc-dispatched.md) — Phase D RFC Created — NPC Commute + Cost vs Satisfaction
+- [rebalance-strategy-interface-contract](rebalance-strategy-interface-contract.md) — RebalanceStrategy.analyse() 接口不可变 — 新策略用构造函数注入
