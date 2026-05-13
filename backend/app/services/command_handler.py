@@ -184,9 +184,8 @@ class CommandHandler:
             engine.fleet.add_bike(bike)
             new_bikes.append(bike_id)
 
-        # Deduct from player balance
+        # Deduct from player balance (handled by _drain_commands → record_result)
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"购买 {count} 辆单车")
 
         # Record in engine's ledger as a cost entry
         from app.core.finance import LedgerEntry, CostCategory
@@ -254,7 +253,6 @@ class CommandHandler:
         engine._station_capacity_overrides[station_id] = current_override + add_cap  # type: ignore[attr-defined]
 
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"扩容 {station_id} (+{add_cap})")
 
         # Ledger entry
         entry = LedgerEntry(
@@ -345,7 +343,6 @@ class CommandHandler:
         }
 
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"促销 {station_id} ({duration}tick ×{boost})")
 
         # Ledger entry
         entry = LedgerEntry(
@@ -369,7 +366,11 @@ class CommandHandler:
 
 
 def _ok() -> CommandResult:
-    """Return a no-op valid result."""
+    """Return a no-op valid result.
+
+    Note: action is set to SET_PRICE as a placeholder; the caller
+    (validate branch) tracks the actual action via the CommandEnvelope.
+    """
     return CommandResult(
         command_id="",
         action=CommandAction.SET_PRICE,
@@ -379,7 +380,11 @@ def _ok() -> CommandResult:
 
 
 def _error(msg: str) -> CommandResult:
-    """Return a validation error result."""
+    """Return a validation error result.
+
+    Note: action is set to SET_PRICE as a placeholder; the caller
+    (validate branch) tracks the actual action via the CommandEnvelope.
+    """
     return CommandResult(
         command_id="",
         action=CommandAction.SET_PRICE,
