@@ -91,7 +91,7 @@ class SatisfactionTracker:
                 health.satisfaction = max(0.0, health.satisfaction - _SATISFACTION_DECAY_PER_TICK_EMPTY)
                 health.hours_empty += 1
             elif is_full:
-                health.satisfaction = max(0.0, health.satisfaction - _SATURATION_DECAY_PER_TICK_FULL)
+                health.satisfaction = max(0.0, health.satisfaction - _SATISFACTION_DECAY_PER_TICK_FULL)
                 health.hours_full += 1
             else:
                 # Recovery when healthy
