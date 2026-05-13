@@ -27,12 +27,175 @@
     }
     #tooltip h3 { margin: 0 0 4px; font-size: 16px; }
     #tooltip .bikes { font-size: 18px; font-weight: bold; color: #ffd700; }
+
+    /* ── Phase C: Dashboard (top bar) ── */
+    #dashboard {
+      position: fixed; top: 10px; left: 10px; z-index: 1000;
+      background: rgba(0,0,0,0.75); color: #fff;
+      padding: 10px 18px; border-radius: 12px;
+      font: 13px/1.5 sans-serif;
+      min-width: 200px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #dashboard .balance { font-size: 20px; font-weight: bold; color: #ffd700; }
+    #dashboard .time { color: #8ab4f8; }
+    #dashboard .profit { font-size: 14px; }
+    #dashboard .profit.positive { color: #28a745; }
+    #dashboard .profit.negative { color: #dc3545; }
+    #dashboard .alert { color: #ff6b6b; font-weight: bold; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.3; } }
+
+    /* ── Phase C: Station action panel ── */
+    #station-panel {
+      position: fixed; z-index: 1001;
+      background: rgba(20,20,40,0.92); color: #fff;
+      padding: 16px 20px; border-radius: 14px;
+      font: 14px/1.6 sans-serif;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(6px);
+      min-width: 240px;
+      display: none;
+    }
+    #station-panel h3 { margin: 0 0 8px; font-size: 17px; color: #8ab4f8; }
+    #station-panel .info-row { display: flex; justify-content: space-between; margin: 2px 0; }
+    #station-panel .info-row .label { color: #aaa; }
+    #station-panel .info-row .value { font-weight: bold; }
+    #station-panel .action-group { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+    #station-panel .action-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 3px; }
+    #station-panel .action-group input[type="range"] { width: 100%; margin: 4px 0 8px; }
+    #station-panel .action-group .range-value { text-align: right; font-weight: bold; color: #ffd700; font-size: 15px; }
+    #station-panel button {
+      background: #2d7d46; color: #fff; border: none;
+      padding: 6px 16px; border-radius: 8px; cursor: pointer;
+      font: 13px/1.4 sans-serif; margin-right: 6px; margin-top: 4px;
+      transition: background 0.2s;
+    }
+    #station-panel button:hover { background: #3a9d57; }
+    #station-panel button:disabled { background: #555; cursor: not-allowed; }
+    #station-panel button.danger { background: #a03232; }
+    #station-panel button.danger:hover { background: #c53a3a; }
+    #station-panel .close-btn {
+      position: absolute; top: 6px; right: 10px;
+      background: none; border: none; color: #aaa; font-size: 20px;
+      cursor: pointer; padding: 0; line-height: 1;
+    }
+    #station-panel .close-btn:hover { color: #fff; }
+    #station-panel .cost-hint { font-size: 11px; color: #ffd700; margin-left: 4px; }
+
+    /* ── Phase C: Global toolbar (bottom) ── */
+    #toolbar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+      background: rgba(0,0,0,0.8); color: #fff;
+      padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      font: 14px/1.5 sans-serif;
+      backdrop-filter: blur(4px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    #toolbar .big-balance {
+      font-size: 22px; font-weight: bold; color: #ffd700;
+    }
+    #toolbar button {
+      background: #2563eb; color: #fff; border: none;
+      padding: 8px 20px; border-radius: 8px; cursor: pointer;
+      font: 14px/1.4 sans-serif; font-weight: bold;
+      transition: background 0.2s;
+    }
+    #toolbar button:hover { background: #3b82f6; }
+    #toolbar button:disabled { background: #555; cursor: not-allowed; }
+    #toolbar .buy-cost { font-size: 12px; color: #aaa; }
+    #toolbar .daily-report {
+      text-align: right; font-size: 12px; color: #ccc;
+      line-height: 1.4;
+    }
+    #toolbar .daily-report .day { color: #8ab4f8; font-weight: bold; }
+
+    /* ── Command feedback toast ── */
+    #toast {
+      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 2000; background: rgba(0,0,0,0.85); color: #fff;
+      padding: 10px 24px; border-radius: 20px;
+      font: 14px/1.5 sans-serif;
+      transition: opacity 0.4s ease; opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #toast.show { opacity: 1; }
+    #toast.success { border-color: #28a745; }
+    #toast.error { border-color: #dc3545; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="dashboard">
+    <div>⏰ <span class="time" id="sim-time">--:--</span> &nbsp; Day <span id="sim-day">0</span></div>
+    <div class="balance" id="dash-balance">¥10,000</div>
+    <div class="profit" id="dash-profit"></div>
+    <div class="alert" id="dash-alert" style="display:none"></div>
+  </div>
   <div id="status-bar" class="disconnected">⏳ 连接中…</div>
   <div id="tooltip"></div>
+
+  <!-- Phase C: Station action panel -->
+  <div id="station-panel">
+    <button class="close-btn" id="panel-close">&times;</button>
+    <h3 id="panel-title">车站</h3>
+    <div class="info-row"><span class="label">可用车辆</span><span class="value" id="panel-bikes">0</span></div>
+    <div class="info-row"><span class="label">容量</span><span class="value" id="panel-capacity">0</span></div>
+    <div class="info-row"><span class="label">当前价格</span><span class="value" id="panel-price">¥1.5/km</span></div>
+
+    <div class="action-group">
+      <label>调价 (¥/km): <span class="range-value" id="price-display">1.5</span></label>
+      <input type="range" id="price-slider" min="0.5" max="10" step="0.5" value="1.5">
+      <button id="btn-set-price">确认定价</button>
+    </div>
+
+    <div class="action-group">
+      <label>扩容 (成本 <span class="cost-hint">¥500/单位</span>)</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="range" id="expand-slider" min="1" max="20" step="1" value="5" style="flex:1">
+        <span class="range-value" id="expand-display">+5</span>
+      </div>
+      <button id="btn-expand">扩容</button>
+    </div>
+
+    <div class="action-group">
+      <label>促销 <span class="cost-hint">¥300 + ¥50/10tick</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:#aaa">持续:</span>
+        <input type="range" id="promo-duration" min="10" max="1440" step="10" value="120" style="flex:1">
+        <span class="range-value" id="promo-duration-display">120t</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <span style="font-size:12px;color:#aaa">倍率:</span>
+        <input type="range" id="promo-boost" min="1.0" max="5.0" step="0.5" value="1.5" style="flex:1">
+        <span class="range-value" id="promo-boost-display">1.5x</span>
+      </div>
+      <button id="btn-promo" class="danger">启动促销</button>
+    </div>
+  </div>
+
+  <!-- Phase C: Global toolbar -->
+  <div id="toolbar">
+    <div>
+      <div>💰 玩家资金</div>
+      <div class="big-balance" id="toolbar-balance">¥10,000.00</div>
+    </div>
+    <div>
+      <button id="btn-buy-bikes">🚲 购买单车</button>
+      <div class="buy-cost">成本: ¥200/辆</div>
+    </div>
+    <div class="daily-report" id="daily-report">
+      <div class="day">Day 1</div>
+      <div>收入: <span id="report-revenue">¥0</span> / 成本: <span id="report-costs">¥0</span></div>
+      <div>利润: <span id="report-profit">¥0</span></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
 
   <script>
     (function() {
@@ -46,6 +209,22 @@
       // ── Canvas setup ─────────────────────────────────────────
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
+
+      // Phase C: UI refs
+      const stationPanel = document.getElementById('station-panel');
+      const dashBalance = document.getElementById('dash-balance');
+      const toolbarBalance = document.getElementById('toolbar-balance');
+      const simTime = document.getElementById('sim-time');
+      const simDay = document.getElementById('sim-day');
+      const dashProfit = document.getElementById('dash-profit');
+      const dashAlert = document.getElementById('dash-alert');
+      const toast = document.getElementById('toast');
+      let toastTimer = null;
+
+      let playerBalance = 10000.0;
+      let selectedStationId = null;
+      let lastTickTime = '--:--';
+      let lastTickDay = 0;
 
       /** Grid cell count (inferred from data or default 20) */
       let gridCols = 20;
@@ -222,6 +401,160 @@
         tooltip.style.display = 'none';
       });
 
+      // ── Phase C: Canvas click → open station panel ────────────
+      canvas.addEventListener('click', (e) => {
+        const mx = e.clientX;
+        const my = e.clientY;
+        const r = Math.max(cellSize * 0.35, 10);
+        let found = null;
+        for (const [sid, st] of stations) {
+          const sx = gridOffsetX + st.x * cellSize;
+          const sy = gridOffsetY + st.y * cellSize;
+          if (Math.hypot(mx - sx, my - sy) <= r + 4) {
+            found = { sid, ...st };
+            break;
+          }
+        }
+        if (found) {
+          openStationPanel(found.sid, found);
+        } else {
+          closeStationPanel();
+        }
+      });
+
+      // ── Phase C: Toast notification ───────────────────────────
+      function showToast(msg, type) {
+        toast.textContent = msg;
+        toast.className = 'show ' + (type || 'success');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.className = ''; }, 3000);
+      }
+
+      // ── Phase C: Send command via WS ──────────────────────────
+      let cmdCounter = 0;
+      function sendCommand(action, payload) {
+        cmdCounter++;
+        const command_id = 'cmd_fe_' + cmdCounter;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'command',
+            command_id: command_id,
+            action: action,
+            payload: payload
+          }));
+        } else {
+          showToast('WebSocket 未连接', 'error');
+        }
+      }
+
+      // ── Phase C: Format currency ──────────────────────────────
+      function fmt(n) {
+        return '\u00A5' + Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      // ── Phase C: Update dashboard UI ──────────────────────────
+      function updateDashboard(balance, time, day, profit, profitSign, alertText) {
+        playerBalance = balance;
+        const balStr = fmt(balance);
+        dashBalance.textContent = balStr;
+        toolbarBalance.textContent = balStr;
+        if (time) { simTime.textContent = time; lastTickTime = time; }
+        if (day !== undefined) { simDay.textContent = day; lastTickDay = day; }
+
+        if (profit !== undefined && profitSign !== undefined) {
+          dashProfit.textContent = (profitSign === 'positive' ? '+' : '') + fmt(profit);
+          dashProfit.className = 'profit ' + profitSign;
+        }
+
+        if (alertText) {
+          dashAlert.textContent = alertText;
+          dashAlert.style.display = 'block';
+        } else {
+          dashAlert.style.display = 'none';
+        }
+      }
+
+      // ── Phase C: Station panel ────────────────────────────────
+      function openStationPanel(sid, st) {
+        selectedStationId = sid;
+        document.getElementById('panel-title').textContent = st.name || '\u8f66\u7ad9 ' + sid;
+        document.getElementById('panel-bikes').textContent = st.bikes;
+        const effectiveCap = st.capacity + (stationCapOverrides[sid] || 0);
+        document.getElementById('panel-capacity').textContent = effectiveCap;
+        document.getElementById('panel-price').textContent = '\u00A5' + (stationPrices[sid] || 1.5) + '/km';
+
+        const slider = document.getElementById('price-slider');
+        slider.value = stationPrices[sid] || 1.5;
+        document.getElementById('price-display').textContent = slider.value;
+
+        stationPanel.style.display = 'block';
+        stationPanel.style.left = '20px';
+        stationPanel.style.top = '80px';
+      }
+
+      function closeStationPanel() {
+        stationPanel.style.display = 'none';
+        selectedStationId = null;
+      }
+
+      // Track station overrides from command results
+      const stationPrices = {};
+      const stationCapOverrides = {};
+
+      // ── Phase C: Wire panel buttons ───────────────────────────
+      document.getElementById('panel-close').addEventListener('click', closeStationPanel);
+
+      document.getElementById('price-slider').addEventListener('input', function() {
+        document.getElementById('price-display').textContent = this.value;
+      });
+      document.getElementById('btn-set-price').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const price = parseFloat(document.getElementById('price-slider').value);
+        sendCommand('set_price', { station_id: selectedStationId, new_price_per_km: price });
+        stationPrices[selectedStationId] = price;
+        document.getElementById('panel-price').textContent = '\u00A5' + price + '/km';
+        showToast('\u5df2\u63d0\u4ea4\u5b9a\u4ef7\u6307\u4ee4: ' + selectedStationId + ' \u2192 \u00A5' + price + '/km');
+      });
+
+      document.getElementById('expand-slider').addEventListener('input', function() {
+        document.getElementById('expand-display').textContent = '+' + this.value;
+      });
+      document.getElementById('btn-expand').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const addCap = parseInt(document.getElementById('expand-slider').value);
+        sendCommand('expand_station', { station_id: selectedStationId, additional_capacity: addCap });
+        const cost = addCap * 500;
+        stationCapOverrides[selectedStationId] = (stationCapOverrides[selectedStationId] || 0) + addCap;
+        document.getElementById('panel-capacity').textContent =
+          (parseInt(document.getElementById('panel-capacity').textContent) || 0) + addCap;
+        showToast('\u5df2\u63d0\u4ea4\u6269\u5bb9\u6307\u4ee4: ' + selectedStationId + ' +' + addCap + ' (\u00A5' + cost + ')');
+      });
+
+      document.getElementById('promo-duration').addEventListener('input', function() {
+        document.getElementById('promo-duration-display').textContent = this.value + 't';
+      });
+      document.getElementById('promo-boost').addEventListener('input', function() {
+        document.getElementById('promo-boost-display').textContent = this.value + 'x';
+      });
+      document.getElementById('btn-promo').addEventListener('click', function() {
+        if (!selectedStationId) return;
+        const duration = parseInt(document.getElementById('promo-duration').value);
+        const boost = parseFloat(document.getElementById('promo-boost').value);
+        sendCommand('launch_promotion', {
+          station_id: selectedStationId,
+          duration_ticks: duration,
+          demand_boost: boost
+        });
+        showToast('\u5df2\u63d0\u4ea4\u4fc3\u9500\u6307\u4ee4: ' + selectedStationId + ' x' + boost + ' ' + duration + 'tick');
+      });
+
+      // ── Phase C: Buy bikes button ─────────────────────────────
+      document.getElementById('btn-buy-bikes').addEventListener('click', function() {
+        const count = 5;
+        sendCommand('buy_bikes', { count: count });
+        showToast('\u5df2\u63d0\u4ea4\u8d2d\u8f66\u6307\u4ee4: ' + count + ' \u8f86 (\u00A5' + (count * 200) + ')');
+      });
+
       // ── Newbie guide ──────────────────────────────────────────
       const guide = document.createElement('div');
       guide.id = 'newbie-guide';
@@ -281,21 +614,25 @@
               stations.set(st.station_id, {
                 x: st.x,
                 y: st.y,
-                name: st.name || `车站 #${st.station_id}`,
+                name: st.name || '\u8f66\u7ad9 #' + st.station_id,
                 capacity: st.capacity,
                 bikes: 0,
               });
             }
 
+            // Phase C: initial balance from bootstrap
+            if (msg.balance !== undefined) {
+              updateDashboard(msg.balance, '--:--', 0, 0, 'positive', '');
+            }
+
             resize();
 
-            statusBar.textContent = `🟢 已连接 — ${stations.size} 个站点 (网格 ${gridCols}×${gridRows})`;
+            statusBar.textContent = '\uD83D\uDFE2 \u5df2\u8fde\u63a5 \u2014 ' + stations.size + ' \u4e2a\u7ad9\u70b9 (\u7f51\u683c ' + gridCols + '\u00D7' + gridRows + ')';
           } else if (msg.type === 'tick') {
             // ── Tick: update station bikes & heatmap ──
             const inv = msg.station_inventory || {};
             for (const [sidStr, bikes] of Object.entries(inv)) {
-              const sid = Number(sidStr);
-              const st = stations.get(sid);
+              const st = stations.get(sidStr);
               if (st) {
                 st.bikes = bikes;
               }
@@ -305,13 +642,45 @@
             demandFactors.clear();
             if (msg.demand_factors) {
               for (const [sidStr, factor] of Object.entries(msg.demand_factors)) {
-                demandFactors.set(Number(sidStr), factor);
+                demandFactors.set(sidStr, factor);
               }
             }
 
             draw();
 
-            statusBar.textContent = `🟢 Tick #${msg.tick} — ${new Date().toLocaleTimeString()}`;
+            // ── Phase C: Update dashboard with balance & daily report ──
+            const bal = msg.balance !== undefined ? msg.balance : playerBalance;
+            const rep = msg.daily_report;
+            let day = lastTickDay;
+            let profitVal = 0;
+            let profitSign = 'positive';
+            let alertText = '';
+            if (rep) {
+              day = rep.day;
+              profitVal = rep.profit_today;
+              profitSign = profitVal >= 0 ? 'positive' : 'negative';
+              alertText = rep.alert || '';
+
+              // Update daily report in toolbar
+              document.getElementById('report-revenue').textContent = fmt(rep.revenue_today);
+              document.getElementById('report-costs').textContent = fmt(rep.costs_today);
+              document.getElementById('report-profit').textContent = (profitVal >= 0 ? '+' : '') + fmt(profitVal);
+              document.getElementById('report-profit').style.color = profitVal >= 0 ? '#28a745' : '#dc3545';
+              document.querySelector('#daily-report .day').textContent = 'Day ' + rep.day;
+            }
+            updateDashboard(bal, msg.time, day, profitVal, profitSign, alertText);
+
+            statusBar.textContent = '\uD83D\uDFE2 Tick #' + msg.tick + ' \u2014 ' + (msg.time || '') + ' \u2014 ' + fmt(bal);
+          } else if (msg.type === 'command_result') {
+            // ── Phase C: Command result feedback ──
+            if (msg.success) {
+              showToast('\u2705 ' + msg.message, 'success');
+              if (msg.new_balance !== undefined) {
+                updateDashboard(msg.new_balance, lastTickTime, lastTickDay, 0, 'positive', '');
+              }
+            } else {
+              showToast('\u274C ' + msg.message, 'error');
+            }
           }
         };
 

@@ -136,6 +136,10 @@ class SimulationEngine:
     _ledger: object | None = None  # Ledger — lazily initialised
     _daily_reports: list[DailyReport] = field(default_factory=list)
 
+    # Phase C: player action overrides
+    _station_price_overrides: dict[str, float] = field(default_factory=dict)
+    _station_capacity_overrides: dict[str, int] = field(default_factory=dict)
+
     # ── lifecycle ────────────────────────────────────────────────
 
     def start(self) -> None:
@@ -287,11 +291,15 @@ class SimulationEngine:
         pricing = PricingEngine()
         tier = self.pricing_tier
         for at in completed_trips:
+            # Check for per-station price override (Phase C)
+            station_id = at.trip.from_station
+            price_per_km = self._station_price_overrides.get(station_id)
             entry = pricing.apply(
                 trip_id=at.trip_id,
                 distance_km=at.distance_km,
                 tier=tier,
                 tick=self.tick,
+                price_per_km=price_per_km,
             )
             ledger_entries.append(entry)
 
@@ -303,7 +311,8 @@ class SimulationEngine:
             station_cap: dict[str, int] = {}
             for sid, station in self.city.stations.items():
                 station_inv[sid] = len(self.fleet.bikes_at_station(sid))
-                station_cap[sid] = station.capacity
+                override = self._station_capacity_overrides.get(sid, 0)
+                station_cap[sid] = station.capacity + override
 
             # Analyse and execute
             report = self.strategy.analyse(station_inv, station_cap)
