@@ -231,7 +231,10 @@ class TestGameSessionFinancial:
     def test_can_afford_epsilon_tolerance(self) -> None:
         s = GameSession()
         assert s.can_afford(9999.999) is True
-        assert s.can_afford(10000.001) is False
+        # epsilon = 0.001, so 10000.001 is within tolerance (10000 >= 10000.001-0.001)
+        assert s.can_afford(10000.001) is True
+        # beyond epsilon: 10000.002 - 0.001 = 10000.001 > 10000
+        assert s.can_afford(10000.002) is False
 
     def test_deduct(self) -> None:
         s = GameSession()
