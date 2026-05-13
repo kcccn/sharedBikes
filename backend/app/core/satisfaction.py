@@ -157,5 +157,5 @@ class SatisfactionTracker:
         """Stations with satisfaction below warning threshold (but not critical)."""
         return [
             sid for sid, h in self._stations.items()
-            if _SATURATION_CRITICAL_THRESHOLD <= h.satisfaction < _SATURATION_CHURN_THRESHOLD
+            if _SATISFACTION_CRITICAL_THRESHOLD <= h.satisfaction < _SATISFACTION_CHURN_THRESHOLD
         ]
