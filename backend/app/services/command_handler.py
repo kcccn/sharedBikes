@@ -343,7 +343,6 @@ class CommandHandler:
         }
 
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"促销 {station_id} ({duration}tick ×{boost})")
 
         # Ledger entry
         entry = LedgerEntry(
