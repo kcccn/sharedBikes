@@ -12,3 +12,4 @@
 - [roadmap-phase7b-synced](roadmap-phase7b-synced.md) — ROADMAP.md and tracker synced — Phase 7B Canvas marked complete
 - [phase-c-game-loop-dispatched](phase-c-game-loop-dispatched.md) — Phase C dispatched — v0.3 能玩 game loop design
 - [phase-c-game-loop-design](phase-c-game-loop-design.md) — Phase C — Game Loop & Player Decision Architecture Design
+- [phase-c-game-loop-complete](phase-c-game-loop-complete.md) — Phase C Complete — Game Loop & Player Decision Implementation
