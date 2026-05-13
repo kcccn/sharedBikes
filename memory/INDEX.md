@@ -18,3 +18,4 @@
 - [phase-d-npc-commute-rfc-dispatched](phase-d-npc-commute-rfc-dispatched.md) — Phase D RFC Created — NPC Commute + Cost vs Satisfaction
 - [rebalance-strategy-interface-contract](rebalance-strategy-interface-contract.md) — RebalanceStrategy.analyse() 接口不可变 — 新策略用构造函数注入
 - [docstring-drift-pattern](docstring-drift-pattern.md) — Docstring Drift — engine.py claimed phantom variables
+- [property-with-params-pitfall](property-with-params-pitfall.md) — @property decorator does not accept parameters — will TypeError at runtime
