@@ -366,7 +366,11 @@ class CommandHandler:
 
 
 def _ok() -> CommandResult:
-    """Return a no-op valid result."""
+    """Return a no-op valid result.
+
+    Note: action is set to SET_PRICE as a placeholder; the caller
+    (validate branch) tracks the actual action via the CommandEnvelope.
+    """
     return CommandResult(
         command_id="",
         action=CommandAction.SET_PRICE,
@@ -376,7 +380,11 @@ def _ok() -> CommandResult:
 
 
 def _error(msg: str) -> CommandResult:
-    """Return a validation error result."""
+    """Return a validation error result.
+
+    Note: action is set to SET_PRICE as a placeholder; the caller
+    (validate branch) tracks the actual action via the CommandEnvelope.
+    """
     return CommandResult(
         command_id="",
         action=CommandAction.SET_PRICE,
