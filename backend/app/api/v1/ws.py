@@ -218,8 +218,9 @@ async def simulation_ws(websocket: WebSocket) -> None:
         except Exception:
             pass
 
-    # ── Start concurrent reader for incoming commands ────────────
+    # ── Start concurrent background tasks ────────────────────────
     reader_task = asyncio.create_task(_reader())
+    engine_drive_task = asyncio.create_task(_drive_engine())
 
     try:
         # ── Forward tick events ──────────────────────────────────
