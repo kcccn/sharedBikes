@@ -434,6 +434,7 @@ class SimulationEngine:
             weather=self.environment.condition.name,
             station_inventory=station_inventory,
             dispatch_movements=dispatch_movements,
+            station_satisfaction=station_satisfaction,
         )
 
         # ── 11. Publish on event bus (Phase 4) ───────────────────
