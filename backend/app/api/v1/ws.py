@@ -119,6 +119,10 @@ async def simulation_ws(websocket: WebSocket) -> None:
     }
     await websocket.send_json(bootstrap_msg)
 
+    # ── Sync→async bridge via asyncio.Queue ──────────────────────
+    queue: asyncio.Queue[TickEvents] = asyncio.Queue()
+    _closed = False
+
     # ── Background engine tick loop ──────────────────────────────
     # Without this, the engine never advances and no tick events
     # are ever published — the frontend freezes on bootstrap.
@@ -132,10 +136,6 @@ async def simulation_ws(websocket: WebSocket) -> None:
             except Exception:
                 pass  # suppress errors during cleanup
             await asyncio.sleep(_tick_interval)
-
-    # ── Sync→async bridge via asyncio.Queue ──────────────────────
-    queue: asyncio.Queue[TickEvents] = asyncio.Queue()
-    _closed = False
 
     def tick_handler(event: TickEvents) -> None:
         """Sync handler invoked on the publisher's thread."""
