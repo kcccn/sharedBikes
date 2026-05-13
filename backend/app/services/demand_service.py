@@ -118,3 +118,76 @@ class RuleBasedDemandService(TripGenerator):
         ratio = current_price / self.reference_price
         elastic_factor = 1.0 + self.price_elasticity * (ratio - 1.0)
         return base_rate * max(0.0, elastic_factor)
+
+
+class CommuteDemandService(TripGenerator):
+    """NPC commute-aware trip generator — replaces RuleBasedDemandService as default.
+
+    Phase D (v0.4): Uses NPC population to generate realistic commute trips:
+    - Morning peak (06:00-08:00): NPCs travel home → work
+    - Evening peak (17:00-19:00): NPCs travel work → home
+    - Off-peak: random short leisure/errand trips with lower rate
+    - Price elasticity: higher prices reduce demand, lower prices increase it
+
+    Satisfaction feedback: stations with low satisfaction generate fewer trips.
+    """
+
+    def __init__(
+        self,
+        population: NpcPopulation | None = None,
+        satisfaction_tracker: SatisfactionTracker | None = None,
+        base_leisure_rate: float = 0.01,
+        peak_leisure_rate: float = 0.03,
+        price_elasticity: float = -0.3,
+        reference_price: float = 1.5,
+    ) -> None:
+        self.population = population
+        self.satisfaction_tracker = satisfaction_tracker
+        self.base_leisure_rate = base_leisure_rate
+        self.peak_leisure_rate = peak_leisure_rate
+        self.price_elasticity = price_elasticity
+        self.reference_price = reference_price
+
+    def generate(
+        self, tick: int, stations: dict[str, Station],
+    ) -> list[TripRequest]:
+        if not stations:
+            return []
+
+        trips: list[TripRequest] = []
+        now = tick % 1440
+        hour = now // 60
+
+        # ── 1. Commute trips from NPC population ─────────────────
+        if self.population is not None:
+            for npc in self.population.npcs:
+                from_s, to_s = npc.trip_od(tick, stations)
+                if from_s and to_s and from_s in stations and to_s in stations:
+                    # Apply satisfaction factor
+                    factor = 1.0
+                    if self.satisfaction_tracker is not None:
+                        factor = self.satisfaction_tracker.get_demand_factor(from_s)
+                    if random.random() < factor:
+                        trips.append(TripRequest(from_station=from_s, to_station=to_s))
+
+        # ── 2. Leisure/errand trips (off-peak random trips) ──────
+        is_peak = (6 <= hour <= 9) or (17 <= hour <= 19)
+        leisure_rate = self.peak_leisure_rate if is_peak else self.base_leisure_rate
+
+        # Scale leisure trips by number of stations (fewer during peak commute)
+        n_leisure = max(0, int(len(stations) * leisure_rate * random.uniform(0.5, 1.0)))
+
+        if n_leisure > 0:
+            station_ids = list(stations.keys())
+            for _ in range(n_leisure):
+                from_s = random.choice(station_ids)
+                to_s = random.choice([s for s in station_ids if s != from_s])
+
+                # Apply satisfaction factor at origin
+                factor = 1.0
+                if self.satisfaction_tracker is not None:
+                    factor = self.satisfaction_tracker.get_demand_factor(from_s)
+                if random.random() < factor:
+                    trips.append(TripRequest(from_station=from_s, to_station=to_s))
+
+        return trips
