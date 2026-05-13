@@ -7,6 +7,12 @@ provides thin wrappers around the engine's lifecycle and query methods.
 Phase C: EngineManager now also owns a GameSession instance, drains the
 player command queue before each advance(), and exposes session info
 for WS tick messages and REST endpoints.
+
+Phase D (v0.4): EngineManager now owns:
+- ``NpcPopulation`` — NPC commuter population generated from city stations
+- ``SatisfactionTracker`` — per-station satisfaction updated every tick
+- ``CommuteDemandService`` — NPC-driven trip generation (replaces RuleBased)
+- ``CostAwareRebalanceStrategy`` — cost-aware dispatch (replaces GreedyThreshold)
 """
 
 from __future__ import annotations
@@ -17,11 +23,13 @@ from app.core.achievement import AchievementEngine, BUILTIN_ACHIEVEMENTS
 from app.core.engine import SimulationEngine, SimState
 from app.core.event_bus import EventBus
 from app.core.fleet import Bike, Fleet
-from app.core.scheduler import GreedyThresholdStrategy
+from app.core.satisfaction import SatisfactionTracker
+from app.core.scheduler import CostAwareRebalanceStrategy, DispatchCost
 from app.core.weather import Environment
+from app.models.npc import NpcPopulation
 from app.models.schemas import BikeOut, EventOut, FleetOut, SimStatusOut
 from app.services.command_handler import CommandHandler
-from app.services.demand_service import RuleBasedDemandService
+from app.services.demand_service import CommuteDemandService
 from app.services.game_session import (
     CommandAction,
     GameSession,
