@@ -123,13 +123,13 @@ class SatisfactionTracker:
             return 1.0
 
         sat = health.satisfaction
-        if sat >= _SATURATION_CHURN_THRESHOLD:
+        if sat >= _SATISFACTION_CHURN_THRESHOLD:
             return 1.0
-        if sat <= _SATURATION_CRITICAL_THRESHOLD:
+        if sat <= _SATISFACTION_CRITICAL_THRESHOLD:
             return 0.0
         # Linear interpolation between thresholds
-        t = (sat - _SATURATION_CRITICAL_THRESHOLD) / (
-            _SATURATION_CHURN_THRESHOLD - _SATURATION_CRITICAL_THRESHOLD
+        t = (sat - _SATISFACTION_CRITICAL_THRESHOLD) / (
+            _SATISFACTION_CHURN_THRESHOLD - _SATISFACTION_CRITICAL_THRESHOLD
         )
         return max(0.0, t)
 
