@@ -377,6 +377,14 @@ class SimulationEngine:
         for sid in self.city.stations:
             station_inventory[sid] = len(self.fleet.bikes_at_station(sid))
 
+        # ── Phase D: Satisfaction snapshot ───────────────────────
+        station_satisfaction: dict[str, float] = {}
+        if self.satisfaction_tracker is not None:
+            station_satisfaction = {
+                sid: h.satisfaction
+                for sid, h in self.satisfaction_tracker.health.items()
+            }
+
         # ── 9. Generate DailyReport at day boundary ──────────────
         report: DailyReport | None = None
         if tick_in_day == 0 and self.tick > 0:
