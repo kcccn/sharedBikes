@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from app.core.coord import Coord
+    from app.core.dispatch_cost import DispatchBudget, DispatchCostParams
     from app.core.fleet import Fleet
 
 
