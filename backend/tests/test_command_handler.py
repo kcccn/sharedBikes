@@ -425,3 +425,174 @@ class TestValidateUnknownAction:
         )
         assert result.success is False
         assert "未知指令类型" in result.message
+
+
+# ======================================================================
+# CommandHandler.execute()
+# ======================================================================
+
+
+class TestExecuteSetPrice:
+    def test_sets_price_override(self, session: GameSession, engine: MagicMock) -> None:
+        result = CommandHandler.execute(
+            CommandAction.SET_PRICE,
+            {"station_id": "s1", "new_price_per_km": 3.0},
+            session,
+            engine,
+            command_id="cmd_set",
+            tick=10,
+        )
+        assert result.success is True
+        assert engine._station_price_overrides["s1"] == 3.0
+        assert result.affected_station == "s1"
+        assert result.balance_change == 0.0
+
+    def test_overwrites_existing(self, session: GameSession, engine: MagicMock) -> None:
+        engine._station_price_overrides["s1"] = 2.0
+        result = CommandHandler.execute(
+            CommandAction.SET_PRICE,
+            {"station_id": "s1", "new_price_per_km": 5.0},
+            session,
+            engine,
+            command_id="cmd_set2",
+            tick=20,
+        )
+        assert engine._station_price_overrides["s1"] == 5.0
+        assert result.success is True
+
+
+class TestExecuteBuyBikes:
+    def test_creates_bikes_and_deducts(
+        self, session: GameSession, engine: MagicMock,
+    ) -> None:
+        result = CommandHandler.execute(
+            CommandAction.BUY_BIKES,
+            {"count": 3},
+            session,
+            engine,
+            command_id="cmd_buy",
+            tick=10,
+        )
+        assert result.success is True
+        assert result.affected_count == 3
+        expected_cost = 3 * BUY_BIKE_COST
+        assert result.balance_change == -expected_cost
+        assert result.new_balance == INITIAL_PLAYER_BALANCE - expected_cost
+        assert engine.fleet.add_bike.call_count == 3
+        engine.append_ledger.assert_called_once()
+
+    def test_single_bike(self, session: GameSession, engine: MagicMock) -> None:
+        result = CommandHandler.execute(
+            CommandAction.BUY_BIKES,
+            {"count": 1},
+            session,
+            engine,
+            command_id="cmd_buy1",
+            tick=5,
+        )
+        assert result.success is True
+        assert result.affected_count == 1
+        assert result.balance_change == -BUY_BIKE_COST
+        engine.fleet.add_bike.assert_called_once()
+
+
+class TestExecuteExpandStation:
+    def test_increases_capacity(self, session: GameSession, engine: MagicMock) -> None:
+        result = CommandHandler.execute(
+            CommandAction.EXPAND_STATION,
+            {"station_id": "s1", "additional_capacity": 10},
+            session,
+            engine,
+            command_id="cmd_exp",
+            tick=15,
+        )
+        assert result.success is True
+        assert engine._station_capacity_overrides["s1"] == 10
+        assert result.affected_station == "s1"
+        assert result.affected_count == 10
+        expected_cost = 10 * EXPAND_STATION_COST
+        assert result.balance_change == -expected_cost
+        engine.append_ledger.assert_called_once()
+
+    def test_accumulates_with_existing(
+        self, session: GameSession, engine: MagicMock,
+    ) -> None:
+        engine._station_capacity_overrides["s1"] = 5
+        CommandHandler.execute(
+            CommandAction.EXPAND_STATION,
+            {"station_id": "s1", "additional_capacity": 10},
+            session,
+            engine,
+            command_id="cmd_exp2",
+            tick=20,
+        )
+        assert engine._station_capacity_overrides["s1"] == 15
+
+
+class TestExecuteLaunchPromotion:
+    def test_creates_special_event(
+        self, session: GameSession, engine: MagicMock,
+    ) -> None:
+        result = CommandHandler.execute(
+            CommandAction.LAUNCH_PROMOTION,
+            {"station_id": "s1", "duration_ticks": 120, "demand_boost": 2.0},
+            session,
+            engine,
+            command_id="cmd_promo",
+            tick=30,
+        )
+        assert result.success is True
+        assert result.affected_station == "s1"
+        assert len(engine.environment.events) == 1
+        event_id = list(engine.environment.events.keys())[0]
+        assert "promo_cmd_promo" in event_id
+        event = engine.environment.events[event_id]
+        assert event.station_id == "s1"
+        assert event.demand_multiplier == 2.0
+        assert event.duration_ticks == 120
+
+    def test_tracks_pending_effects(
+        self, session: GameSession, engine: MagicMock,
+    ) -> None:
+        CommandHandler.execute(
+            CommandAction.LAUNCH_PROMOTION,
+            {"station_id": "s2", "duration_ticks": 60, "demand_boost": 1.5},
+            session,
+            engine,
+            command_id="cmd_promo2",
+            tick=40,
+        )
+        assert "s2" in session.pending_effects
+        effect = session.pending_effects["s2"]
+        assert effect["type"] == "promotion"
+        assert effect["remaining_ticks"] == 60
+        assert effect["boost"] == 1.5
+
+    def test_computes_total_cost(
+        self, session: GameSession, engine: MagicMock,
+    ) -> None:
+        result = CommandHandler.execute(
+            CommandAction.LAUNCH_PROMOTION,
+            {"station_id": "s1", "duration_ticks": 120, "demand_boost": 2.0},
+            session,
+            engine,
+            command_id="cmd_promo3",
+            tick=50,
+        )
+        expected_cost = PROMOTION_COST + int(120 / 10) * 50  # 300 + 600 = 900
+        assert result.balance_change == -expected_cost
+        engine.append_ledger.assert_called_once()
+
+
+class TestExecuteUnknownAction:
+    def test_unknown_action(self, session: GameSession, engine: MagicMock) -> None:
+        result = CommandHandler.execute(
+            "unknown_action",  # type: ignore[arg-type]
+            {},
+            session,
+            engine,
+            command_id="cmd_unknown",
+            tick=0,
+        )
+        assert result.success is False
+        assert "未知指令类型" in result.message
