@@ -58,6 +58,9 @@ class EngineManager:
             # Cached tick data for WS consumption
             cls._instance._last_tick_balance: float = 0.0
             cls._instance._last_daily_report: SessionDailyReport | None = None
+            # Phase D: NPC + satisfaction
+            cls._instance._npc_population: NpcPopulation | None = None
+            cls._instance._satisfaction_tracker: SatisfactionTracker | None = None
         return cls._instance
 
     # ── engine lifecycle ──────────────────────────────────────────
