@@ -161,9 +161,6 @@ async def simulation_ws(websocket: WebSocket) -> None:
 
                 if result_id is None:
                     # Validation failed — get the detailed error
-                    from app.services.command_handler import CommandHandler
-                    from app.services.game_session import CommandAction
-
                     try:
                         cmd_action = CommandAction(action)
                         validation = CommandHandler.validate(
