@@ -119,6 +119,20 @@ async def simulation_ws(websocket: WebSocket) -> None:
     }
     await websocket.send_json(bootstrap_msg)
 
+    # ── Background engine tick loop ──────────────────────────────
+    # Without this, the engine never advances and no tick events
+    # are ever published — the frontend freezes on bootstrap.
+    _tick_interval = 1.0 / max(mgr.engine.speed_multiplier, 1)  # seconds per tick
+
+    async def _drive_engine() -> None:
+        """Continuously advance the simulation engine."""
+        while not _closed:
+            try:
+                mgr.advance(1)
+            except Exception:
+                pass  # suppress errors during cleanup
+            await asyncio.sleep(_tick_interval)
+
     # ── Sync→async bridge via asyncio.Queue ──────────────────────
     queue: asyncio.Queue[TickEvents] = asyncio.Queue()
     _closed = False
