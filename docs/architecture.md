@@ -362,10 +362,10 @@ CommandHandler
 | 6P2 | 供需热力图 (demand_factor + Leaflet.heat) | ✅ 完成 |
 | **7A** | **抽象坐标替换：GridCoord + ProceduralCityGenerator** | ✅ **完成** |
 | **7B** | **Canvas 前端渲染（替换 Leaflet）** | ✅ **完成** |
-| **C** | **游戏循环与玩家决策（v0.3 能玩）** | 🔄 **设计中** |
+| **C** | **游戏循环与玩家决策（v0.3 能玩）** | ✅ **完成** |
 | C1 | 架构设计 — GameSession + PlayerCommand | ✅ **已完成** |
-| C2 | 后端 GameSession/CommandHandler 实现 | ⏳ 待 coder |
-| C3 | WS 协议扩展 — command 消息类型 | ⏳ 待 coder |
-| C4 | 前端点击事件 → 站点操作面板 | ⏳ 待 coder |
-| C5 | 前端仪表盘（余额/收入/日报告） | ⏳ 待 coder |
-| C6 | 集成测试 | ⏳ 待 coder |
+| C2 | 后端 GameSession/CommandHandler 实现 | ✅ **已完成** |
+| C3 | WS 协议扩展 — command 消息类型 | ✅ **已完成** |
+| C4 | 前端点击事件 → 站点操作面板 | ✅ **已完成** |
+| C5 | 前端仪表盘（余额/收入/日报告） | ✅ **已完成** |
+| C6 | 集成测试 | ✅ **已完成** |
