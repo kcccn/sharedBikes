@@ -91,6 +91,7 @@ class TickEvents:
     weather: str = "CLEAR"
     station_inventory: dict[str, int] = field(default_factory=dict)
     dispatch_movements: list[tuple[str, str, int]] = field(default_factory=list)  # Phase 3
+    station_satisfaction: dict[str, float] = field(default_factory=dict)  # Phase D
 
     @property
     def revenue(self) -> float:
