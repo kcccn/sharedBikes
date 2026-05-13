@@ -17,6 +17,13 @@ Phase 4 adds event bus integration:
 - After each ``_tick()`` the engine publishes a ``"tick"`` event on ``EventBus``
 - WebSocket broadcaster, AchievementEngine, and other consumers subscribe
   without coupling to the engine's internals
+
+Phase D (v0.4) adds:
+- Satisfaction tracking: ``SatisfactionTracker`` monitors station health,
+  feeds back into demand generation, and resets strategy budget at day
+  boundaries.
+- Inventory + capacity tracking: ``_station_inventory_history`` and
+  ``_station_capacity_history`` cached per tick for satisfaction updates.
 """
 
 from __future__ import annotations
