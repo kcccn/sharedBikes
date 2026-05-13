@@ -253,7 +253,6 @@ class CommandHandler:
         engine._station_capacity_overrides[station_id] = current_override + add_cap  # type: ignore[attr-defined]
 
         old_balance = session.player_balance
-        session.deduct(total_cost, reason=f"扩容 {station_id} (+{add_cap})")
 
         # Ledger entry
         entry = LedgerEntry(
