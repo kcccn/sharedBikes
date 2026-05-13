@@ -22,7 +22,9 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.event_bus import EventBus, TickEvents
+from app.services.command_handler import CommandHandler
 from app.services.engine_manager import EngineManager
+from app.services.game_session import CommandAction
 
 ws_router = APIRouter()
 
