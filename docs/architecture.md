@@ -369,3 +369,76 @@ CommandHandler
 | C4 | 前端点击事件 → 站点操作面板 | ✅ **已完成** |
 | C5 | 前端仪表盘（余额/收入/日报告） | ✅ **已完成** |
 | C6 | 集成测试 | ✅ **已完成** |
+| **D** | **NPC 通勤 · 调度成本 vs 满意度（v0.4 能赢）** | ✅ **完成** |
+| D1 | NPC Commute Model — 通勤需求生成与分配 | ✅ **已完成** |
+| D2 | Cost-Aware Rebalancing — 调度成本感知策略 | ✅ **已完成** |
+| D3 | Satisfaction Tracking — 站点满意度追踪 | ✅ **已完成** |
+| D4 | Review fixes & code quality | ✅ **已完成** |
+
+---
+
+## Phase D — NPC 通勤 · 调度成本 vs 满意度（v0.4 能赢）
+
+### 动机
+
+Phase C 让玩家有了决策能力，但模拟世界中的 NPC 通勤还是一个简单的事件。Phase D 引入了：
+
+1. **NPC Commute Model** — 上班族通勤需求，包含起点/终点/时间分布，让需求引擎产生更真实的 OD 流
+2. **Cost-Aware Rebalancing** — 调度策略不仅仅看供需比，还考虑调度成本（距离 + 人力），产生更经济的调度方案
+3. **Satisfaction Tracking** — 每个站点追踪乘客满意度，满意度影响乘客留存和口碑，形成经营反馈环
+
+### 新增概念
+
+#### NPC CommuteModel
+
+```
+CommuteModel
+├── generate_commute_flow(tick, city) → list[CommuteTrip]
+│   ├── morning_rush:   6:00-9:00   住宅区→商业区
+│   ├── evening_rush:   17:00-20:00 商业区→住宅区
+│   └── off_peak:       随机分布
+├── zone_classification:  city.zones 标注居住/商业/混合属性
+└── trip_distribution:   根据站点容量和区域属性分配乘客量
+```
+
+- `CommuteTrip(from_station, to_station, passenger_count, departure_tick)` — 不可变值对象
+- 集成到 `SimulationEngine._tick()` 中，在每个 tick 生成通勤流量
+- 通勤流量叠加到现有的 DemandService 需求计算中
+
+#### CostAwareRebalanceStrategy
+
+```
+CostAwareRebalanceStrategy(RebalanceStrategy)
+├── analyse(city, fleet) → list[RebalanceOrder]
+│   ├── cost_model:        distance * unit_cost + flat_fee_per_trip
+│   ├── satisfaction_bias: 满意度低的站点获得调度优先级加成
+│   └── budget_limit:      每 tick 调度预算上线
+└── priority_score(station) → float
+    ├── 供需偏差 (weight: 0.5)
+    ├── 调度成本 (weight: -0.3)
+    └── 满意度缺口 (weight: 0.2)
+```
+
+- 实现 `RebalanceStrategy` 接口，可替换 `GreedyThresholdStrategy`
+- 通过构造函数注入 cost 参数和 satisfaction 数据源
+- 在 `Scheduler` 中根据配置选择策略实现
+
+#### StationSatisfaction
+
+```
+StationSatisfaction
+├── station_id: str
+├── score: float (0.0 - 5.0)
+├── last_updated: int (tick)
+├── factors:
+│   ├── availability:    可用车辆比例
+│   ├── waiting_time:    平均等待时长
+│   ├── price_fairness:  价格与区域均价偏差
+│   └── trend:           最近变化方向
+└── decay_rate:          每 tick 自然衰减
+```
+
+- 存储在 `Station` 领域模型中或独立 SatisfactionLedger 中
+- 每 tick 由 Engine 更新
+- 影响：低满意度 → 乘客流失 → 收入下降
+- 玩家可通过定价/扩容/促销间接影响满意度
