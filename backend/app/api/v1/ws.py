@@ -123,6 +123,20 @@ async def simulation_ws(websocket: WebSocket) -> None:
     queue: asyncio.Queue[TickEvents] = asyncio.Queue()
     _closed = False
 
+    # ── Background engine tick loop ──────────────────────────────
+    # Without this, the engine never advances and no tick events
+    # are ever published — the frontend freezes on bootstrap.
+    _tick_interval = 1.0 / max(mgr.engine.speed_multiplier, 1)  # seconds per tick
+
+    async def _drive_engine() -> None:
+        """Continuously advance the simulation engine."""
+        while not _closed:
+            try:
+                mgr.advance(1)
+            except Exception:
+                pass  # suppress errors during cleanup
+            await asyncio.sleep(_tick_interval)
+
     def tick_handler(event: TickEvents) -> None:
         """Sync handler invoked on the publisher's thread."""
         if not _closed:
@@ -204,8 +218,9 @@ async def simulation_ws(websocket: WebSocket) -> None:
         except Exception:
             pass
 
-    # ── Start concurrent reader for incoming commands ────────────
+    # ── Start concurrent background tasks ────────────────────────
     reader_task = asyncio.create_task(_reader())
+    engine_drive_task = asyncio.create_task(_drive_engine())
 
     try:
         # ── Forward tick events ──────────────────────────────────
@@ -231,7 +246,12 @@ async def simulation_ws(websocket: WebSocket) -> None:
         _closed = True
         bus.unsubscribe("tick", key=conn_key)
         reader_task.cancel()
+        engine_drive_task.cancel()
         try:
             await reader_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        try:
+            await engine_drive_task
         except (asyncio.CancelledError, Exception):
             pass
